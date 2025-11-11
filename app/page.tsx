@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="flex w-full justify-center bg-neutral-50 font-sans">
+    <div className="flex w-full justify-center bg-neutral-50 font-sans min-h-screen">
       <main className="max-w-4xl flex flex-col items-center gap-y-24 py-32 px-16">
         <Image
           className=""
@@ -18,12 +18,12 @@ export default function Home() {
           </h1>
           <p className="max-w-md text-lg leading-8 text-zinc-500">
             There is a guy once asked me, why your bio said "Building anything i think i can"
-            Like how'd you know to build "anything"? I said, i don't know, i just do the thing.
+            Like how'd you know to build "anything"? I said, i don't know, i just do the thing i think i can.
           </p>
         </div>
         <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
           <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] md:w-[158px]"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gray-300 px-5 text-background transition-colors hover:bg-neutral-50 md:w-[158px]"
             href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
             target="_blank"
             rel="noopener noreferrer"
@@ -43,7 +43,7 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            About-Me.md
+            Readme.md
           </a>
         </div>
       </main>
