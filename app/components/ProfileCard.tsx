@@ -2,9 +2,8 @@
 
 import Link from 'next/link'; 
 import { useAnimationStore } from '../lib/useAnimationStore'; 
-
-// --- Tipe Animasi ---
-type AnimationType = 'dino' | 'walker' | 'orbs';
+import { ConnectButton } from '@rainbow-me/rainbowkit'; 
+import { useAccount } from 'wagmi';
 
 // --- Komponen Ikon ---
 const GithubIcon = () => (
@@ -138,7 +137,11 @@ const SettingsIcon = () => (
 
 
 const ProfileCard = () => {
-  const { activeAnimation } = useAnimationStore();
+  // Ambil 'activeAnimation' DAN 'isHydrated' dari store
+  const { activeAnimation, isHydrated } = useAnimationStore();
+  
+  // Ambil 'isConnected' DARI hook 'useAccount'
+  const { isConnected } = useAccount();
 
   const renderAnimation = () => {
     switch (activeAnimation) {
@@ -148,6 +151,8 @@ const ProfileCard = () => {
         return <WalkerBirdAnimation />;
       case 'orbs':
         return <OrbsAnimation />;
+      // Jika 'activeAnimation' adalah nama ekstensi,
+      // kita bisa tampilkan placeholder atau memuatnya secara dinamis nanti.
       default:
         return (
           <div className="flex items-center justify-center h-full text-white/50">
@@ -184,49 +189,37 @@ const ProfileCard = () => {
       `}</style>
 
       <div className="relative flex flex-col overflow-hidden rounded-xl bg-white shadow-sm md:row-span-1">
-        {/* Area Banner Animasi */}
         <div className="relative h-32 w-full overflow-hidden bg-zinc-900">
-          {/* Canvas Animasi */}
           <div className="absolute inset-0">{renderAnimation()}</div>
-          <Link
-            href="/settings"
-            className="absolute top-2 left-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-all hover:bg-white/40"
-            aria-label="Pengaturan Animasi"
-          >
-            <SettingsIcon />
-          </Link>
-          {/* Tombol Pilihan Animasi */}
-          <div className="absolute top-2 right-2 z-10 flex gap-1.5">
-            <button
-              onClick={() => setActiveAnimation('dino')}
-              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                activeAnimation === 'dino'
-                  ? 'bg-white text-black'
-                  : 'bg-white/20 text-white hover:bg-white/40'
-              }`}
-            >
-              1
-            </button>
-            <button
-              onClick={() => setActiveAnimation('walker')}
-              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                activeAnimation === 'walker'
-                  ? 'bg-white text-black'
-                  : 'bg-white/20 text-white hover:bg-white/40'
-              }`}
-            >
-              2
-            </button>
-            <button
-              onClick={() => setActiveAnimation('orbs')}
-              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                activeAnimation === 'orbs'
-                  ? 'bg-white text-black'
-                  : 'bg-white/20 text-white hover:bg-white/40'
-              }`}
-            >
-              3
-            </button>
+
+          {/* --- LOGIKA BARU YANG DISEMPURNAKAN --- */}
+          <div className="absolute top-2 left-2 z-10">
+            {/* HANYA tampilkan tombol jika store sudah "terhidrasi" (siap di client)
+              DAN wallet sudah terhubung.
+            */}
+            {isHydrated && isConnected ? (
+              // JIKA SUDAH CONNECT: Tampilkan tombol settings
+              <Link
+                href="/settings"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-all hover:bg-white/40"
+                aria-label="Pengaturan Animasi"
+              >
+                <SettingsIcon />
+              </Link>
+            ) : (
+              // JIKA BELUM CONNECT (atau belum terhidrasi): Tampilkan tombol "Connect Wallet"
+              <ConnectButton.Custom>
+                {({ openConnectModal, mounted }) => (
+                  <button
+                    onClick={openConnectModal}
+                    disabled={!mounted}
+                    className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-white/40"
+                  >
+                    Connect
+                  </button>
+                )}
+              </ConnectButton.Custom>
+            )}
           </div>
         </div>
 

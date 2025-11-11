@@ -1,15 +1,14 @@
 "use client";
 import { useState } from 'react';
-import { useAnimationStore } from '../lib/useAnimationStore'; // Impor "otak" kita
+import { useAnimationStore } from '../lib/useAnimationStore';
 
 export default function SettingsPage() {
-  // Panggil store kita
   const {
     activeAnimation,
     setActiveAnimation,
     extensions,
     addExtension,
-    isHydrated, // Gunakan ini untuk mencegah render UI sebelum state siap
+    isHydrated, 
   } = useAnimationStore();
 
   // State lokal untuk input "Import GitHub"
@@ -18,7 +17,7 @@ export default function SettingsPage() {
   const handleImport = () => {
     if (repoUrl.trim()) {
       addExtension(repoUrl.trim());
-      setRepoUrl(''); // Kosongkan input
+      setRepoUrl(''); 
     }
   };
 

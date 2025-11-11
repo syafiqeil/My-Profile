@@ -1,13 +1,13 @@
 "use client";
 /*
-  Ini adalah "penyimpanan" (store) kustom kita.
-  Ini menggunakan localStorage untuk menyimpan pilihan animasi
-  sehingga bisa di-share antara halaman utama dan halaman settings.
+  File ini dibuat BARU (atau DITIMPA) dengan perbaikan keamanan.
+  Kita menambahkan try...catch block untuk menangani error
+  jika localStorage tidak tersedia.
 */
 import { useState, useEffect } from 'react';
 
 // Tipe animasi yang tersedia
-export type AnimationType = 'dino' | 'walker' | 'orbs' | string; // string untuk ekstensi kustom
+export type AnimationType = 'dino' | 'walker' | 'orbs' | string;
 
 // Tipe data untuk ekstensi
 export interface AnimationExtension {
@@ -21,19 +21,42 @@ const DEFAULTS = {
   extensions: [] as AnimationExtension[],
 };
 
-// Fungsi helper untuk mendapatkan data dari localStorage dengan aman
+// --- FUNGSI HELPER BARU YANG LEBIH AMAN ---
 function getStorageValue<T>(key: string, defaultValue: T): T {
+  // Cek jika kita di server
   if (typeof window === 'undefined') {
     return defaultValue;
   }
-  const saved = localStorage.getItem(key);
+  
   try {
+    // Coba akses localStorage
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : defaultValue;
   } catch (e) {
-    console.error("Gagal parse localStorage", e);
+    // Jika gagal (misal: diblokir oleh iframe),
+    // log error dan kembalikan nilai default.
+    console.warn(`localStorage.getItem gagal untuk key "${key}":`, e);
     return defaultValue;
   }
 }
+
+// --- FUNGSI HELPER BARU YANG LEBIH AMAN ---
+function setStorageValue<T>(key: string, value: T) {
+  // Cek jika kita di server
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    // Coba set localStorage
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    // Jika gagal (misal: diblokir oleh iframe),
+    // log error.
+    console.warn(`localStorage.setItem gagal untuk key "${key}":`, e);
+  }
+}
+
 
 export const useAnimationStore = () => {
   // 1. State untuk animasi yang sedang aktif
@@ -46,41 +69,41 @@ export const useAnimationStore = () => {
     getStorageValue('animation_extensions', DEFAULTS.extensions)
   );
   
-  // 3. State ini 'hack' untuk memastikan localStorage terbaca setelah
-  //    komponen di-mount (dihidrasi) di klien, menghindari error server/client mismatch.
+  // 3. State 'isHydrated'
   const [isHydrated, setIsHydrated] = useState(false);
   
   useEffect(() => {
-    // Saat komponen mount, set isHydrated
     setIsHydrated(true);
   }, []);
 
-  // Efek untuk MENYIMPAN ke localStorage setiap kali state berubah
+  // Efek untuk MENYIMPAN ke localStorage
   useEffect(() => {
-    localStorage.setItem('animation_setting', JSON.stringify(activeAnimation));
-  }, [activeAnimation]);
+    if (isHydrated) { // Hanya simpan jika sudah di client
+      setStorageValue('animation_setting', activeAnimation);
+    }
+  }, [activeAnimation, isHydrated]);
 
   useEffect(() => {
-    localStorage.setItem('animation_extensions', JSON.stringify(extensions));
-  }, [extensions]);
+    if (isHydrated) { // Hanya simpan jika sudah di client
+      setStorageValue('animation_extensions', extensions);
+    }
+  }, [extensions, isHydrated]);
 
-  // Fungsi untuk menambah ekstensi baru (dari "GitHub")
+  // Fungsi untuk menambah ekstensi baru
   const addExtension = (repoUrl: string) => {
-    // Logika impor GitHub yang sebenarnya rumit (perlu API route).
-    // Untuk SAAT INI, kita hanya tambahkan placeholder:
     const newExtension: AnimationExtension = {
       id: repoUrl,
-      name: repoUrl.split('/').pop() || 'Animasi Kustom', // Ambil nama repo
+      name: repoUrl.split('/').pop() || 'Animasi Kustom',
     };
     setExtensions((prev) => [...prev, newExtension]);
   };
   
-  // Hanya kembalikan nilai SETELAH terhidrasi
+  // Kembalikan nilai yang sudah "aman"
   return {
     activeAnimation: isHydrated ? activeAnimation : DEFAULTS.animation,
     extensions: isHydrated ? extensions : DEFAULTS.extensions,
     setActiveAnimation,
     addExtension,
-    isHydrated, // Kita kembalikan ini agar UI tahu kapan harus render
+    isHydrated,
   };
 };
