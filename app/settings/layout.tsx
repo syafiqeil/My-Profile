@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import React from 'react';
 
-// Layout ini akan memberi tombol "Kembali"
 export default function SettingsLayout({
   children,
 }: {

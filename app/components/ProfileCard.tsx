@@ -3,7 +3,7 @@
 "use client"; 
 
 import Link from 'next/link'; 
-import { useAnimationStore } from '../lib/useAnimationStore';
+import { useAnimationStore, Profile } from '../lib/SessionProvider'; 
 import { ConnectButton } from '@rainbow-me/rainbowkit'; 
 import { useAccount } from 'wagmi';
 
@@ -138,8 +138,8 @@ const SettingsIcon = () => (
 );
 
 
-const ProfileCard = () => {
-  // Gunakan hook baru
+const ProfileCard = ({ profile }: { profile: Profile | null }) => {
+  // Ambil state sesi, bukan state animasi
   const { 
     activeAnimation, 
     isAuthenticated, 
@@ -221,6 +221,10 @@ const ProfileCard = () => {
     );
   };
 
+  const githubUrl = profile?.github 
+    ? `https://github.com/${profile.github}` 
+    : '#';
+
   return (
     <>
       <style>{`
@@ -250,9 +254,8 @@ const ProfileCard = () => {
       <div className="relative flex flex-col overflow-hidden rounded-xl bg-white shadow-sm md:row-span-1">
         <div className="relative h-32 w-full overflow-hidden bg-zinc-900">
           <div className="absolute inset-0">{renderAnimation()}</div>
-          
           <div className="absolute top-2 left-2 z-10">
-            {renderAuthButton()} {/* Panggil fungsi render logika baru */}
+            {renderAuthButton()}
           </div>
         </div>
 
@@ -260,38 +263,38 @@ const ProfileCard = () => {
         <div className="flex flex-1 flex-col p-6 pt-0">
           <img
             className="relative -mt-12 mb-4 h-24 w-24"
-            src="/profilgue.png"
+            src="/profilgue.png" // bisa buat ini dinamis nanti
             alt="profile gue"
             width={96}
             height={96}
           />
 
-          {/* Nama & Bio */}
+          {/* --- DATA DINAMIS --- */}
           <div className="mb-6 flex flex-col gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-              Syafiq Nabil Assirhindi
+              {/* Gunakan 'name' dari profil, atau default jika belum login */}
+              {profile ? profile.name : (isAuthenticated ? 'Pengguna Baru' : 'Selamat Datang')}
             </h1>
             <p className="text-base leading-relaxed text-zinc-600">
-              A guy once asked me, why your bio said "Building anything i
-              think i can" Like how'd you know how to build "anything"? I said, "i don't
-              know, i just do the thing i think i can."" 
+              {/* Gunakan 'bio' dari profil, atau default jika belum login */}
+              {profile ? profile.bio : "Silakan login untuk melihat atau mengatur profil Anda."}
             </p>
           </div>
-
+         
           <div className="flex-grow" />
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <a
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-              href="https://github.com/syafiqeil"
+              className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800 ${!profile?.github ? 'pointer-events-none opacity-50' : ''}`}
+              href={githubUrl} 
               target="_blank"
               rel="noopener noreferrer"
             >
               <GithubIcon />
-              My Github
+              {profile?.github ? 'My Github' : 'GitHub Belum Diatur'}
             </a>
             <a
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-solid border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-solid border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 pointer-events-none opacity-50"
               href="#"
               target="_blank"
               rel="noopener noreferrer"

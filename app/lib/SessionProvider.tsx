@@ -13,18 +13,29 @@ import {
 import { useAccount, useSignMessage, useChainId, useDisconnect } from 'wagmi'; 
 import { SiweMessage } from 'siwe';
 
-// Tipe ekstensi 
+// --- 1. DEFINISIKAN TIPE PROFIL ---
+export interface Profile {
+  name: string;
+  bio: string;
+  github: string;
+  animation: string;
+  // projects: any[];
+  // activity: any;
+}
+
 export interface AnimationExtension {
   id: string;
   name: string;
 }
 
-// Tipe state sesi
 interface SessionContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
+  profile: Profile | null;
   login: () => Promise<void>;
   logout: () => void;
+  saveProfile: (dataToSave: Partial<Profile>) => Promise<void>; 
+  
   activeAnimation: string;
   setActiveAnimation: (anim: string) => Promise<void>;
   extensions: AnimationExtension[];
@@ -32,66 +43,93 @@ interface SessionContextType {
   isHydrated: boolean;
 }
 
-// Buat Context
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
-// Nilai default
 const DEFAULTS = {
   animation: 'dino',
   extensions: [] as AnimationExtension[],
 };
 
-// Buat Provider
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const { address, chainId: wagmiChainId } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { disconnect } = useDisconnect();
   const chainId = wagmiChainId || 1;
 
-  // Semua state yang sebelumnya ada di 'useUserSessionStore' sekarang ada di sini
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const [activeAnimation, setLocalAnimation] = useState(() => {
-    if (typeof window === 'undefined') return DEFAULTS.animation;
-    return localStorage.getItem('animation_setting') || DEFAULTS.animation;
-  });
-  
+  const [profile, setProfile] = useState<Profile | null>(null); // <-- 4. BUAT STATE PROFIL
+
+  // State lama untuk animasi (sekarang dikendalikan oleh 'profile')
   const [extensions, setExtensions] = useState<AnimationExtension[]>(() => {
     if (typeof window === 'undefined') return DEFAULTS.extensions;
     return JSON.parse(localStorage.getItem('animation_extensions') || '[]');
   });
 
-  // Efek ini sekarang akan berjalan sekali dan state-nya akan persisten
+  // Helper untuk mengambil profil dari server
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch('/api/user/profile'); // Panggil API GET baru
+      if (response.ok) {
+        const data = await response.json();
+        setProfile(data.profile); // Simpan profil ke state
+        return data.profile;
+      } else if (response.status === 404) {
+        setProfile(null); // Pengguna baru, profil null
+      } else {
+        setIsAuthenticated(false); // Gagal (mungkin sesi tidak valid)
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil profil:", error);
+      setIsAuthenticated(false);
+      setProfile(null);
+    }
+  };
+  
+  // Efek cek sesi: sekarang juga mengambil profil
   useEffect(() => {
     const checkSession = async () => {
       if (!address) {
         setIsAuthenticated(false);
+        setProfile(null);
         setIsLoading(false);
         return;
       }
       
       setIsLoading(true);
+      await fetchProfile(); // Coba ambil profil
+      // fetchProfile akan mengatur isAuthenticated berdasarkan respons server
+      // (Kita asumsikan jika fetchProfile berhasil, sesi sudah ada, tapi API kita belum melakukan itu)
+      // Mari kita perbaiki: checkSession harusnya hanya cek auth.
+      
+      // --- Logika yang Diperbaiki ---
       try {
-        const response = await fetch('/api/user/preference');
-        if (response.ok) {
-          const data = await response.json();
-          setLocalAnimation(data.animation);
-          localStorage.setItem('animation_setting', data.animation); // Sinkronkan cache
+        const res = await fetch('/api/user/profile'); // Gunakan ini untuk cek sesi
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data.profile);
           setIsAuthenticated(true);
+        } else if (res.status === 404) {
+           setProfile(null);
+           setIsAuthenticated(true); // Tetap terautentikasi, hanya profilnya null
         } else {
-          setIsAuthenticated(false);
+           // Gagal (401, dll)
+           setIsAuthenticated(false);
+           setProfile(null);
         }
-      } catch (error) {
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
+      } catch (e) {
+         setIsAuthenticated(false);
+         setProfile(null);
       }
+      // -------------------------
+
+      setIsLoading(false);
     };
     checkSession();
-  }, [address]); // Hanya bergantung pada 'address'
+  }, [address]);
 
-  // Fungsi Login 
+  // Fungsi Login: sekarang juga mengambil profil setelah sukses
   const login = useCallback(async () => {
     if (!address || !chainId) return;
     setIsLoading(true);
@@ -111,52 +149,62 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ message: message.prepareMessage(), signature }),
       });
       if (!verifyRes.ok) throw new Error('Verifikasi gagal');
-      const data = await verifyRes.json();
+      
+      // Sukses!
       setIsAuthenticated(true);
-      setLocalAnimation(data.animation);
-      localStorage.setItem('animation_setting', data.animation); // Simpan ke cache
+      await fetchProfile(); // Ambil profil pengguna setelah login
+
     } catch (error) {
       console.error('Login gagal:', error);
       setIsAuthenticated(false);
+      setProfile(null);
     } finally {
       setIsLoading(false);
     }
   }, [address, chainId, signMessageAsync]);
 
-  // Fungsi Simpan Animasi 
-  const setActiveAnimation = useCallback(async (newAnimation: string) => {
-    setLocalAnimation(newAnimation);
-    localStorage.setItem('animation_setting', newAnimation);
-    
-    if (isAuthenticated) {
-      try {
-        await fetch('/api/user/preference', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ animation: newAnimation }),
-        });
-      } catch (error) {
-        console.error('Gagal menyimpan preferensi:', error);
-      }
-    }
-  }, [isAuthenticated]);
-
+  // Fungsi Logout: sekarang juga membersihkan profil
   const logout = useCallback(async () => {
-    // A. Langsung update UI 
     setIsAuthenticated(false);
-    
-    // B. Beri tahu server untuk menghancurkan cookie sesi
+    setProfile(null); 
     try {
       await fetch('/api/siwe/logout'); 
     } catch (error) {
       console.error("Gagal clear session di server:", error);
     }
-    
     disconnect();
-    
   }, [disconnect]);
-  
-  // Fungsi Ekstensi 
+
+  // --- 5. FUNGSI UNTUK MENYIMPAN PROFIL ---
+  const saveProfile = useCallback(async (dataToSave: Partial<Profile>) => {
+    if (!isAuthenticated) return;
+    
+    // Optimistic update
+    const oldProfile = profile;
+    setProfile(prev => ({ ...(prev as Profile), ...dataToSave })); 
+    
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSave),
+      });
+      if (!res.ok) {
+        throw new Error('Gagal menyimpan ke server');
+      }
+      // Data sudah disimpan, state lokal sudah benar
+    } catch (error) {
+      console.error("Gagal menyimpan profil:", error);
+      setProfile(oldProfile); 
+    }
+  }, [isAuthenticated, profile]);
+
+  const setActiveAnimation = useCallback(async (newAnimation: string) => {
+    await saveProfile({ animation: newAnimation });
+  }, [saveProfile]);
+
+  const activeAnimation = profile?.animation || DEFAULTS.animation;
+
   const addExtension = (repoUrl: string) => {
     const newExtension: AnimationExtension = {
       id: repoUrl,
@@ -169,13 +217,14 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  // Nilai yang akan dibagikan ke semua komponen
   const value = {
     isAuthenticated,
     isLoading,
+    profile, 
     login,
     logout,
-    activeAnimation,
+    saveProfile, 
+    activeAnimation, 
     setActiveAnimation: setActiveAnimation as (anim: string) => Promise<void>,
     extensions,
     addExtension,
@@ -189,7 +238,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Hook kustom yang akan digunakan oleh komponen
+// Hook kustom 
 export const useAnimationStore = () => {
   const context = useContext(SessionContext);
   if (context === undefined) {
