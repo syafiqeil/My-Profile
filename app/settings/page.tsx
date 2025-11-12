@@ -1,6 +1,8 @@
 "use client";
+
 import { useState } from 'react';
-import { useAnimationStore } from '../lib/useAnimationStore';
+import { useAnimationStore } from '../lib/useAnimationStore'; 
+import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
   const {
@@ -9,11 +11,12 @@ export default function SettingsPage() {
     extensions,
     addExtension,
     isHydrated, 
+    logout
   } = useAnimationStore();
 
-  // State lokal untuk input "Import GitHub"
   const [repoUrl, setRepoUrl] = useState('');
-
+  const router = useRouter();
+  
   const handleImport = () => {
     if (repoUrl.trim()) {
       addExtension(repoUrl.trim());
@@ -21,7 +24,11 @@ export default function SettingsPage() {
     }
   };
 
-  // Jangan render apapun jika state belum sinkron dengan localStorage
+  const handleDisconnect = () => { 
+    logout();
+    router.push('/'); 
+  };
+ 
   if (!isHydrated) {
     return (
       <div className="text-zinc-500">
@@ -32,14 +39,11 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Bagian 1: Animasi Bawaan */}
+      {/* Bagian 1. Animasi Bawaan */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
           Animasi Bawaan
         </h2>
-        <p className="text-sm text-zinc-500 mb-4">
-          Pilih salah satu animasi bawaan untuk ditampilkan di banner Anda.
-        </p>
         <div className="flex flex-col gap-2">
           {/* Opsi 1 */}
           <label className="flex items-center gap-3 p-3 border rounded-lg has-[:checked]:bg-zinc-50 has-[:checked]:border-zinc-300">
@@ -77,14 +81,11 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Bagian 2: Impor Ekstensi */}
+      {/* Bagian 2. Impor Ekstensi */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
           Impor Ekstensi (dari GitHub)
         </h2>
-        <p className="text-sm text-zinc-500 mb-4">
-          Tempel URL repositori GitHub. (Contoh: syafiqeil/animasi-hujan)
-        </p>
         <div className="flex gap-2">
           <input
             type="text"
@@ -102,7 +103,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Bagian 3: Gunakan Ekstensi */}
+      {/* Bagian 3. Gunakan Ekstensi */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
           Ekstensi Terpasang
@@ -130,6 +131,16 @@ export default function SettingsPage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Bagian 5. Disconnect */}
+      <section className="pt-6">
+        <button
+          onClick={handleDisconnect}
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+        >
+          Disconnect Wallet
+        </button>
       </section>
     </div>
   );

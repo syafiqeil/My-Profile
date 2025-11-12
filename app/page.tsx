@@ -1,5 +1,7 @@
 // app/page.tsx
 
+"use client"; 
+
 import ProfileCard from "./components/ProfileCard";
 import ProjectCard from "./components/ProjectCard";
 import ActivityCard from "./components/ActivityCard";

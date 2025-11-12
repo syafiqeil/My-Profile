@@ -1,7 +1,9 @@
+// app/componentsProfileCard.tsx
+
 "use client"; 
 
 import Link from 'next/link'; 
-import { useAnimationStore } from '../lib/useAnimationStore'; 
+import { useAnimationStore } from '../lib/useAnimationStore';
 import { ConnectButton } from '@rainbow-me/rainbowkit'; 
 import { useAccount } from 'wagmi';
 
@@ -137,10 +139,14 @@ const SettingsIcon = () => (
 
 
 const ProfileCard = () => {
-  // Ambil 'activeAnimation' DAN 'isHydrated' dari store
-  const { activeAnimation, isHydrated } = useAnimationStore();
+  // Gunakan hook baru
+  const { 
+    activeAnimation, 
+    isAuthenticated, 
+    isLoading, 
+    login 
+  } = useAnimationStore();
   
-  // Ambil 'isConnected' DARI hook 'useAccount'
   const { isConnected } = useAccount();
 
   const renderAnimation = () => {
@@ -160,6 +166,59 @@ const ProfileCard = () => {
           </div>
         );
     }
+  };
+
+  const renderAuthButton = () => {
+    if (isLoading) {
+      return (
+        <button
+          disabled
+          className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white transition-all"
+        >
+          Memuat...
+        </button>
+      );
+    }
+
+    if (!isConnected) {
+      // 1. Belum konek wallet -> Tampilkan ConnectButton
+      return (
+        <ConnectButton.Custom>
+          {({ openConnectModal, mounted }) => (
+            <button
+              onClick={openConnectModal}
+              disabled={!mounted}
+              className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-white/40"
+            >
+              Connect
+            </button>
+          )}
+        </ConnectButton.Custom>
+      );
+    }
+
+    if (!isAuthenticated) {
+      // 2. Sudah konek, tapi belum login -> Tampilkan tombol Login (SIWE)
+      return (
+        <button
+          onClick={login} // Panggil fungsi login dari hook
+          className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-white/40"
+        >
+          Login (Sign)
+        </button>
+      );
+    }
+
+    // 3. Sudah konek dan sudah login -> Tampilkan Settings
+    return (
+      <Link
+        href="/settings"
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-all hover:bg-white/40"
+        aria-label="Pengaturan Animasi"
+      >
+        <SettingsIcon />
+      </Link>
+    );
   };
 
   return (
@@ -191,35 +250,9 @@ const ProfileCard = () => {
       <div className="relative flex flex-col overflow-hidden rounded-xl bg-white shadow-sm md:row-span-1">
         <div className="relative h-32 w-full overflow-hidden bg-zinc-900">
           <div className="absolute inset-0">{renderAnimation()}</div>
-
-          {/* --- LOGIKA BARU YANG DISEMPURNAKAN --- */}
+          
           <div className="absolute top-2 left-2 z-10">
-            {/* HANYA tampilkan tombol jika store sudah "terhidrasi" (siap di client)
-              DAN wallet sudah terhubung.
-            */}
-            {isHydrated && isConnected ? (
-              // JIKA SUDAH CONNECT: Tampilkan tombol settings
-              <Link
-                href="/settings"
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-all hover:bg-white/40"
-                aria-label="Pengaturan Animasi"
-              >
-                <SettingsIcon />
-              </Link>
-            ) : (
-              // JIKA BELUM CONNECT (atau belum terhidrasi): Tampilkan tombol "Connect Wallet"
-              <ConnectButton.Custom>
-                {({ openConnectModal, mounted }) => (
-                  <button
-                    onClick={openConnectModal}
-                    disabled={!mounted}
-                    className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-white/40"
-                  >
-                    Connect
-                  </button>
-                )}
-              </ConnectButton.Custom>
-            )}
+            {renderAuthButton()} {/* Panggil fungsi render logika baru */}
           </div>
         </div>
 
