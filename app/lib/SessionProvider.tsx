@@ -86,25 +86,23 @@ export interface Profile {
 }
 export interface AnimationExtension { id: string; name: string; }
 
-// --- Tipe Konteks (Diperbarui) ---
+// --- Tipe Konteks ---
 interface SessionContextType {
   isAuthenticated: boolean;
-  isLoading: boolean; // Kita kembalikan isLoading untuk ProfileLoader
+  isLoading: boolean; 
   profile: Profile | null;
   login: () => Promise<void>;
   logout: () => void;
-  saveProfile: (dataToSave: Partial<Profile>) => void; // Simpan ke state
+  saveProfile: (dataToSave: Partial<Profile>) => void; 
   
   activeAnimation: string;
   setActiveAnimation: (anim: string) => Promise<void>;
   extensions: AnimationExtension[];
   addExtension: (url: string) => void;
   isHydrated: boolean;
-  
   isPublishing: boolean;
   publishChangesToOnChain: () => Promise<void>;
 
-  // Fungsi baru untuk dipanggil oleh ProfileLoader
   _setProfile: (profile: Profile | null) => void;
   _setIsLoading: (loading: boolean) => void;
   _setIsAuthenticated: (auth: boolean) => void;
@@ -394,7 +392,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <SessionContext.Provider value={value}>
-      {children}
+      <ProfileLoader>
+        {children}
+      </ProfileLoader>
     </SessionContext.Provider>
   );
 };
