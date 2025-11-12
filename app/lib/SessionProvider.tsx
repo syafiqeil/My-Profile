@@ -19,9 +19,10 @@ import {
   useWriteContract 
 } from 'wagmi'; 
 import { SiweMessage } from 'siwe';
+import { resolveIpfsUrl } from './utils';
 
 // --- ALAMAT & ABI KONTRAK ---
-const USER_PROFILE_CONTRACT_ADDRESS = '0x8c09c9d8ab25b81e5a9e1462f9bdc83dfcc7d7bf99';
+const USER_PROFILE_CONTRACT_ADDRESS = '0x8c09c8db25b81e5a9e1462f9bdc83dfcc7d7bf99';
 const userProfileAbi = [
   {
     "inputs": [
@@ -65,7 +66,7 @@ const userProfileAbi = [
   }
 ];
 
-// --- Tipe Data (Sama seperti sebelumnya) ---
+// --- Tipe Data ---
 export interface ActivityItem { id: string; title: string; url: string; }
 export interface Project {
   id: string; name: string; description: string;
@@ -105,7 +106,7 @@ interface SessionContextType {
 
   _setProfile: (profile: Profile | null) => void;
   _setIsLoading: (loading: boolean) => void;
-  _setIsAuthenticated: (auth: boolean) => void;
+  isProfileLoading: boolean;
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -119,70 +120,71 @@ const DEFAULTS = {
   } as Profile
 };
 
-// --- KOMPONEN HELPER BARU: PROFILE LOADER ---
+// --- KOMPONEN HELPER: PROFILE LOADER ---
 // Komponen ini akan menangani semua logika PEMBACAAN data
 const ProfileLoader = ({ children }: { children: ReactNode }) => {
   const { 
     _setProfile, 
-    _setIsLoading, 
-    _setIsAuthenticated,
-    isPublishing // Kita gunakan ini untuk mencegah reload saat mempublikasikan
+    _setIsProfileLoading,
+    isAuthenticated, 
+    isPublishing 
   } = useAnimationStore();
   
-  const { address, isConnected } = useAccount();
-  const [isFetchingIpfs, setIsFetchingIpfs] = useState(false);
+  const { address } = useAccount();
 
-  // 1. Panggil Smart Contract (Hook Reaktif)
-  const { data: masterCID, isLoading: isReadingContract, isError, refetch } = useReadContract({
+  // 1. Panggil Smart Contract
+  const { 
+    data: masterCID, 
+    isLoading: isReadingContract, 
+    isError, 
+    error: readContractError 
+  } = useReadContract({
     address: USER_PROFILE_CONTRACT_ADDRESS,
     abi: userProfileAbi,
     functionName: 'getProfileCID',
-    args: [address as `0x${string}`], // Ambil data untuk alamat yang terhubung
+    args: [address as `0x${string}`],
     query: {
-      enabled: !!address && !isPublishing, // Hanya jalankan jika ada alamat & tidak sedang publish
+      enabled: !!address && isAuthenticated && !isPublishing,
     },
   });
   
-  // 2. Efek untuk memuat data dari IPFS saat masterCID berubah
+  // 2. Efek untuk memuat data dari IPFS
   useEffect(() => {
-    if (!address) {
-      _setIsAuthenticated(false);
+    if (!isAuthenticated) {
       _setProfile(null);
       return;
     }
-
+    
     if (isReadingContract) {
-      _setIsLoading(true);
+      _setIsProfileLoading(true);
       return;
     }
 
     if (isError) {
-      console.error("Gagal membaca dari smart contract.");
-      _setIsAuthenticated(true); // Tetap login, tapi profil gagal dimuat
-      _setProfile(DEFAULTS.defaultProfile);
-      _setIsLoading(false);
+      console.error("Gagal membaca smart contract:", readContractError); // <-- Digunakan di sini
+      _setProfile(DEFAULTS.defaultProfile); 
+      _setIsProfileLoading(false);
       return;
     }
-    
-    // Jika tidak ada error, kita terautentikasi
-    _setIsAuthenticated(true);
 
     if (masterCID) {
       // 3. Jika CID ada, ambil data dari IPFS
       const fetchFromIpfs = async (cid: string) => {
-        setIsFetchingIpfs(true);
-        _setIsLoading(true);
+        _setIsProfileLoading(true);
         try {
-          const res = await fetch(`https://gateway.ipfs.io/ipfs/${cid}`);
+          const url = resolveIpfsUrl(`ipfs://${cid}`);
+          if (!url) throw new Error("CID tidak valid");
+
+          const res = await fetch(url);
+          
           if (!res.ok) throw new Error("File tidak ditemukan di IPFS");
           const data: Profile = await res.json();
-          _setProfile(data);
+          _setProfile(data); // Sukses!
         } catch (e) {
           console.error("Gagal mengambil JSON dari IPFS:", e);
-          _setProfile(DEFAULTS.defaultProfile); // Gagal fetch, beri profil kosong
+          _setProfile(DEFAULTS.defaultProfile);
         } finally {
-          setIsFetchingIpfs(false);
-          _setIsLoading(false);
+          _setIsProfileLoading(false);
         }
       };
       fetchFromIpfs(masterCID as string);
@@ -190,10 +192,18 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
     } else {
       // 4. Jika CID tidak ada (pengguna baru), berikan profil kosong
       _setProfile(DEFAULTS.defaultProfile);
-      _setIsLoading(false);
+      _setIsProfileLoading(false);
     }
 
-  }, [address, masterCID, isReadingContract, isError, _setProfile, _setIsLoading, _setIsAuthenticated]);
+  }, [
+    isAuthenticated, 
+    masterCID, 
+    isReadingContract, 
+    isError, 
+    readContractError, 
+    _setProfile, 
+    _setIsProfileLoading
+  ]);
 
   return <>{children}</>;
 };
@@ -206,7 +216,8 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const chainId = wagmiChainId || 1;
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Sekarang dikontrol oleh ProfileLoader
+  const [isLoading, setIsLoading] = useState(true); 
+  const [isProfileLoading, setIsProfileLoading] = useState(true); 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [extensions, setExtensions] = useState<AnimationExtension[]>(() => {
     if (typeof window === 'undefined') return DEFAULTS.extensions;
@@ -216,13 +227,44 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [isPublishing, setIsPublishing] = useState(false);
   const { writeContractAsync } = useWriteContract();
 
-  // --- HAPUS fetchProfile() dan useEffect[address] (checkSession) ---
-  // Seluruh logika tersebut sekarang ditangani oleh <ProfileLoader />
+  // --- LOGIKA CEK SESI AWAL ---
+  useEffect(() => {
+    const checkSession = async () => {
+      if (!address) {
+        setIsAuthenticated(false);
+        setProfile(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        // Cek ke server apakah kita punya sesi Iron Session
+        const res = await fetch('/api/user/profile');
+        
+        if (res.ok || res.status === 404) {
+           // Jika server bilang OK (200) atau NotFound (404, pengguna baru)
+           // berarti kita punya sesi yang valid.
+           setIsAuthenticated(true);
+        } else {
+           // Jika server bilang 401 (Unauthorized) atau lainnya
+           setIsAuthenticated(false);
+           setProfile(null);
+        }
+      } catch (e) {
+         setIsAuthenticated(false);
+         setProfile(null);
+      } finally {
+        setIsLoading(false); // Selesai memuat sesi
+      }
+    };
+    checkSession();
+  }, [address]); // <--- Dijalankan setiap kali alamat dompet berubah
 
-  // --- Fungsi Login (Disederhanakan) ---
+  // --- Fungsi Login ---
   const login = useCallback(async () => {
     if (!address || !chainId) return;
-    setIsLoading(true);
+    setIsLoading(true); // Tampilkan loading
     try {
       const nonceRes = await fetch('/api/siwe/nonce');
       const nonce = await nonceRes.text();
@@ -240,21 +282,20 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       });
       if (!verifyRes.ok) throw new Error('Verifikasi gagal');
       
-      // SUKSES! Cukup set 'true'. ProfileLoader akan menangani sisanya.
+      // SUKSES! Set auth ke true.
       setIsAuthenticated(true); 
-      // Kita tidak perlu memanggil fetchProfile() lagi.
+      // ProfileLoader sekarang akan otomatis mengambil data
       
     } catch (error) {
       console.error('Login gagal:', error);
       setIsAuthenticated(false);
       setProfile(null);
     } finally {
-      // Biarkan ProfileLoader yang mengatur isLoading
-      // setIsLoading(false);
+      setIsLoading(false); // Selesai
     }
   }, [address, chainId, signMessageAsync]);
 
-  // ... (fungsi logout SAMA) ...
+  // --- Fungsi Logout ---
   const logout = useCallback(async () => {
     setIsAuthenticated(false);
     setProfile(null); 
@@ -263,10 +304,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Gagal clear session di server:", error);
     }
-    disconnect();
+    disconnect(); // Ini akan memicu useEffect checkSession
   }, [disconnect]);
 
-  // ... (fungsi saveProfile SAMA, setActiveAnimation SAMA) ...
   const saveProfile = useCallback((dataToSave: Partial<Profile>) => {
     if (!isAuthenticated) return;
     setProfile(prev => ({ ...(prev as Profile), ...dataToSave })); 
@@ -278,13 +318,16 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   const activeAnimation = profile?.animation || DEFAULTS.animation;
 
-  // ... (Helper uploadFileToApi & uploadJsonToApi SAMA) ...
   const uploadFileToApi = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
     const response = await fetch('/api/upload', { method: 'POST', body: formData });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Server error /api/upload:", errorText);
+      throw new Error(`Gagal mengunggah file (${response.status}). Server: ${errorText}`);
+    }
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Gagal mengunggah file.');
     return data.ipfsHash;
   };
   
@@ -294,12 +337,15 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Server error /api/upload-json:", errorText);
+      throw new Error(`Gagal mengunggah JSON (${response.status}). Server: ${errorText}`);
+    }
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Gagal mengunggah JSON.');
     return result.ipfsHash;
   };
 
-  // ... (Fungsi "OTAK" publishChangesToOnChain SAMA PERSIS) ...
   const publishChangesToOnChain = useCallback(async () => {
     if (!profile) return alert("Profil belum dimuat.");
     setIsPublishing(true);
@@ -376,18 +422,23 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   const value = {
     isAuthenticated,
-    isLoading,
+    isLoading, // Ini untuk cek sesi awal
     profile, 
     login,
     logout,
-    saveProfile, 
+    saveProfile,
     activeAnimation, 
-    setActiveAnimation: setActiveAnimation as (anim: string) => Promise<void>,
+    setActiveAnimation,
     extensions,
     addExtension,
-    isHydrated: !isLoading,
+    isHydrated: !isLoading && !isProfileLoading && !!profile, 
     isPublishing,
     publishChangesToOnChain,
+
+    // Fungsi internal untuk ProfileLoader
+    _setProfile: setProfile,
+    _setIsProfileLoading: setIsProfileLoading, 
+    isProfileLoading, 
   };
 
   return (

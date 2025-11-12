@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useAnimationStore, Project } from '../lib/SessionProvider'; 
 import { ProjectModal } from './ProjectModal';
+import { resolveIpfsUrl } from '../lib/utils';
 
 const ProjectIcon = () => (
   <svg
@@ -26,17 +27,19 @@ const ProjectIcon = () => (
 
 // --- Komponen Item Proyek (untuk daftar scrollable) ---
 const ProjectListItem = ({ project, onClick }: { project: Project, onClick: () => void }) => {
+  const mediaUrl = resolveIpfsUrl(project.mediaIpfsUrl) || project.mediaPreview;
+
   return (
     <button 
       onClick={onClick}
       className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-zinc-50 transition-colors group text-left"
     >
       <div className="w-16 h-10 rounded-md border border-zinc-200 bg-zinc-50 flex-shrink-0 overflow-hidden">
-        {project.mediaPreview ? (
-          project.mediaPreview.startsWith('data:image/') || project.mediaPreview.startsWith('blob:image/') ? (
-            <img src={project.mediaPreview} alt={project.name} className="w-full h-full object-cover" />
+        {mediaUrl ? ( 
+          mediaUrl.startsWith('data:image/') || mediaUrl.startsWith('blob:image/') ? (
+            <img src={mediaUrl} alt={project.name} className="w-full h-full object-cover" />
           ) : (
-            <video src={project.mediaPreview} className="w-full h-full object-cover" autoPlay muted loop />
+            <video src={mediaUrl} className="w-full h-full object-cover" autoPlay muted loop />
           )
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-zinc-100 text-zinc-400">
@@ -54,6 +57,8 @@ const ProjectListItem = ({ project, onClick }: { project: Project, onClick: () =
 
 // --- Komponen Proyek Unggulan (untuk grid) ---
 const FeaturedProjectItem = ({ project, onClick }: { project: Project, onClick: () => void }) => {
+  const mediaUrl = resolveIpfsUrl(project.mediaIpfsUrl) || project.mediaPreview;
+
   return (
     <button 
       onClick={onClick}
@@ -61,11 +66,11 @@ const FeaturedProjectItem = ({ project, onClick }: { project: Project, onClick: 
     >
       {/* Media */}
       <div className="w-full h-32 bg-zinc-100 flex items-center justify-center overflow-hidden">
-        {project.mediaPreview ? (
-          project.mediaPreview.startsWith('data:image/') || project.mediaPreview.startsWith('blob:image/') ? (
-            <img src={project.mediaPreview} alt={project.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+        {mediaUrl ? ( 
+          mediaUrl.startsWith('data:image/') || mediaUrl.startsWith('blob:image/') ? (
+            <img src={mediaUrl} alt={project.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
           ) : (
-            <video src={project.mediaPreview} className="w-full h-full object-cover transition-transform group-hover:scale-105" autoPlay muted loop />
+            <video src={mediaUrl} className="w-full h-full object-cover transition-transform group-hover:scale-105" autoPlay muted loop />
           )
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-zinc-100 text-zinc-400">

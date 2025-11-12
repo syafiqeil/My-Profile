@@ -10,25 +10,33 @@ const PINATA_API_KEY = process.env.PINATA_API_KEY;
 const PINATA_API_SECRET = process.env.PINATA_API_SECRET;
 
 if (!PINATA_API_KEY || !PINATA_API_SECRET) {
-  throw new Error("Kunci API Pinata belum diatur di .env.local");
+  console.error("Kunci API Pinata belum diatur di .env.local");
 }
 
 export async function POST(request: NextRequest) {
-  // 1. Verifikasi Sesi Pengguna
+  // 1. Verifikasi Kunci API (Pengecekan runtime)
+  if (!PINATA_API_KEY || !PINATA_API_SECRET) {
+    return NextResponse.json(
+      { error: 'Kunci API Pinata belum dikonfigurasi di server.' }, 
+      { status: 500 }
+    );
+  }
+
+  // 2. Verifikasi Sesi Pengguna
   const session = await getIronSession(await cookies(), sessionOptions);
   if (!session.address) {
     return NextResponse.json({ error: 'Tidak terotentikasi' }, { status: 401 });
   }
 
   try {
-    // 2. Ambil data JSON dari body request
+    // 3. Ambil data JSON dari body request
     const jsonData = await request.json();
 
     if (!jsonData) {
       return NextResponse.json({ error: 'Data JSON tidak ditemukan' }, { status: 400 });
     }
 
-    // 3. Buat wrapper yang diminta oleh Pinata
+    // 4. Buat wrapper yang diminta oleh Pinata
     const pinataData = JSON.stringify({
       pinataContent: jsonData,
       pinataMetadata: {
@@ -39,7 +47,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 4. Upload ke Pinata menggunakan endpoint pinJSONToIPFS
+    // 5. Upload ke Pinata
     const pinataUrl = 'https://api.pinata.cloud/pinning/pinJSONToIPFS';
     const response = await axios.post(pinataUrl, pinataData, {
       headers: {
@@ -49,14 +57,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 5. Kembalikan IPFS Hash (CID) dari JSON tersebut
-    return NextResponse.json({
-      ok: true,
-      ipfsHash: response.data.IpfsHash // Ini adalah "Master CID" kita
+    // 6. Kembalikan IPFS Hash (CID) dari JSON tersebut
+    return NextResponse.json({ 
+      ok: true, 
+      ipfsHash: response.data.IpfsHash 
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gagal upload JSON ke Pinata:", error);
-    return NextResponse.json({ error: 'Gagal mengunggah JSON.' }, { status: 500 });
+    let errorMessage = 'Gagal mengunggah JSON.';
+    // Jika error datang dari Axios (Pinata)
+    if (axios.isAxiosError(error) && error.response) {
+      errorMessage = `Error dari Pinata (${error.response.status}): ${JSON.stringify(error.response.data)}`;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    return NextResponse.json(
+      { error: errorMessage }, 
+      { status: 500 }
+    );
   }
 }

@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useAnimationStore, Profile, Project } from '@/app/lib/useAnimationStore'; 
 import { useRouter } from 'next/navigation';
+import { resolveIpfsUrl } from '@/app/lib/utils';
 
 const ImageIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
@@ -163,7 +164,7 @@ export default function ProfileSettingsPage() {
     return <div className="text-zinc-500">Memuat pengaturan profil...</div>;
   }
 
-  const displayImage = profileImagePreview || (profile?.imageUrl?.replace('ipfs://', 'https://gateway.ipfs.io/ipfs/')) || "/profilgue.png";
+  const displayImage = profileImageFile ? profileImagePreview : resolveIpfsUrl(profile?.imageUrl) || "/profilgue.png";
 
   return (
     <div className="flex flex-col gap-8">

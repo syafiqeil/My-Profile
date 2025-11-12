@@ -2,8 +2,9 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, FormEvent, useEffect } from 'react';
 import { useAnimationStore, Project } from '@/app/lib/useAnimationStore';
+import { resolveIpfsUrl } from '@/app/lib/utils';
 
 interface Project {
   id: string; 
@@ -158,10 +159,10 @@ export default function ProjectsSettingsPage() {
     setEditingId(project.id);
     setName(project.name);
     setDescription(project.description);
-    setMediaPreview(project.mediaIpfsUrl ? project.mediaIpfsUrl.replace('ipfs://', 'https://gateway.ipfs.io/ipfs/') : project.mediaPreview);
+    setMediaPreview(resolveIpfsUrl(project.mediaIpfsUrl) || project.mediaPreview);
     setTags(project.tags);
     setProjectUrl(project.projectUrl || '');
-    setMediaFile(project.pendingMediaFile || null); 
+    setMediaFile(project.pendingMediaFile || null);
   };
 
   const handleDelete = (id: string) => {
