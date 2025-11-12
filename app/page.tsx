@@ -39,7 +39,7 @@ export default function Home() {
   // Jika sudah login DAN punya profil (atau jika belum login)
   // Kita akan biarkan ProfileCard yang menangani tampilan tombol login
   return (
-    <main className="flex min-h-screen w-full flex-col bg-black p-4 pt-8 md:p-8">
+    <main className="flex min-h-screen w-full flex-col bg-zinc-100 p-4 pt-8 md:p-8">
       <div className="grid h-full flex-1 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-rows-2">
         <ProfileCard profile={profile} />
         <ProjectCard />

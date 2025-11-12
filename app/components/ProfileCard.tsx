@@ -212,7 +212,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
     // 3. Sudah konek dan sudah login -> Tampilkan Settings
     return (
       <Link
-        href="/settings"
+        href="/settings/profile"
         className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-all hover:bg-white/40"
         aria-label="Pengaturan Animasi"
       >
@@ -254,7 +254,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
       <div className="relative flex flex-col overflow-hidden rounded-xl bg-white shadow-sm md:row-span-1">
         <div className="relative h-32 w-full overflow-hidden bg-zinc-900">
           <div className="absolute inset-0">{renderAnimation()}</div>
-          <div className="absolute top-2 left-2 z-10">
+          <div className="absolute top-2 right-2 z-10">
             {renderAuthButton()}
           </div>
         </div>
@@ -263,7 +263,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
         <div className="flex flex-1 flex-col p-6 pt-0">
           <img
             className="relative -mt-12 mb-4 h-24 w-24"
-            src="/profilgue.png" // bisa buat ini dinamis nanti
+            src="/profilgue.png" 
             alt="profile gue"
             width={96}
             height={96}
@@ -277,7 +277,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
             </h1>
             <p className="text-base leading-relaxed text-zinc-600">
               {/* Gunakan 'bio' dari profil, atau default jika belum login */}
-              {profile ? profile.bio : "Silakan login untuk melihat atau mengatur profil Anda."}
+              {profile ? profile.bio : "Silakan connect dan login untuk melihat atau mengatur profil Anda."}
             </p>
           </div>
          
