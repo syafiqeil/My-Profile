@@ -3,9 +3,12 @@
 "use client"; 
 
 import Link from 'next/link'; 
+import { useState } from 'react';
 import { useAnimationStore, Profile } from '../lib/SessionProvider'; 
 import { ConnectButton } from '@rainbow-me/rainbowkit'; 
 import { useAccount } from 'wagmi';
+import { resolveIpfsUrl } from '../lib/utils';
+import { ReadmeModal } from './ReadmeModal';
 
 // --- Komponen Ikon ---
 const GithubIcon = () => (
@@ -139,6 +142,7 @@ const SettingsIcon = () => (
 
 
 const ProfileCard = ({ profile }: { profile: Profile | null }) => {
+  const [isReadmeModalOpen, setIsReadmeModalOpen] = useState(false);
   // Ambil state sesi, bukan state animasi
   const { 
     activeAnimation, 
@@ -221,12 +225,25 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
     );
   };
 
+  const displayImageUrl = resolveIpfsUrl(profile?.imageUrl) || "/profilgue.png";
+
   const githubUrl = profile?.github 
     ? `https://github.com/${profile.github}` 
     : '#';
 
+  const readmeIpfsUrl = profile?.readmeUrl;
+  const hasReadme = !!readmeIpfsUrl;
+  const readmeName = profile?.readmeName || 'Readme.md';
+
   return (
     <>
+      {isReadmeModalOpen && (
+        <ReadmeModal 
+          readmeUrl={readmeIpfsUrl} 
+          onClose={() => setIsReadmeModalOpen(false)} 
+        />
+      )}
+
       <style>{`
         @keyframes dino-jump {
           0% { transform: translateY(0); }
@@ -263,13 +280,12 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
         <div className="flex flex-1 flex-col p-6 pt-0">
           <img
             className="relative -mt-12 mb-4 h-24 w-24"
-            src="/profilgue.png" 
+            src={displayImageUrl} 
             alt="profile gue"
             width={96}
             height={96}
           />
 
-          {/* --- DATA DINAMIS --- */}
           <div className="mb-6 flex flex-col gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
               {/* Gunakan 'name' dari profil, atau default jika belum login */}
@@ -293,15 +309,19 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
               <GithubIcon />
               {profile?.github ? 'My Github' : 'GitHub Belum Diatur'}
             </a>
-            <a
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-solid border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 pointer-events-none opacity-50"
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => setIsReadmeModalOpen(true)}
+              disabled={!hasReadme} 
+              className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-solid border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition-colors ${
+                !hasReadme 
+                ? 'opacity-50 cursor-not-allowed'
+                : 'hover:bg-zinc-50'
+              }`}
             >
               <FileIcon />
-              Readme.md
-            </a>
+              {hasReadme ? readmeName : 'Readme.md'}
+            </button>
           </div>
         </div>
       </div>
