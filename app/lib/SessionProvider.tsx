@@ -8,7 +8,8 @@ import {
   useState, 
   useEffect, 
   useCallback, 
-  ReactNode 
+  ReactNode,
+  useMemo
 } from 'react';
 import { 
   useAccount, 
@@ -90,23 +91,29 @@ export interface AnimationExtension { id: string; name: string; }
 // --- Tipe Konteks ---
 interface SessionContextType {
   isAuthenticated: boolean;
-  isLoading: boolean; 
-  profile: Profile | null;
+  isLoading: boolean; // Loading sesi
+  isProfileLoading: boolean; // Loading data profil
+  profile: Profile | null; // Ini akan menjadi DRAF
+  
   login: () => Promise<void>;
   logout: () => void;
-  saveProfile: (dataToSave: Partial<Profile>) => void; 
   
+  // Fungsi auto-save
+  saveDraft: (dataToSave: Partial<Profile>) => void;
+  
+  // Status baru
+  hasUnpublishedChanges: boolean;
+  isPublishing: boolean;
+  publishChangesToOnChain: () => Promise<void>;
+
   activeAnimation: string;
   setActiveAnimation: (anim: string) => Promise<void>;
   extensions: AnimationExtension[];
   addExtension: (url: string) => void;
-  isHydrated: boolean;
-  isPublishing: boolean;
-  publishChangesToOnChain: () => Promise<void>;
-
+  
+  // Fungsi internal
   _setProfile: (profile: Profile | null) => void;
-  _setIsLoading: (loading: boolean) => void;
-  isProfileLoading: boolean;
+  _setIsProfileLoading: (loading: boolean) => void;
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -115,30 +122,29 @@ const DEFAULTS = {
   animation: 'dino',
   extensions: [] as AnimationExtension[],
   defaultProfile: {
+    name: '', bio: '', github: '', animation: 'dino',
     projects: [],
     activity: { blogPosts: [], certificates: [], contactEmail: '' },
   } as Profile
 };
 
+// Ambil gateway URL dari environment variable
+const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
+
 // --- KOMPONEN HELPER: PROFILE LOADER ---
-// Komponen ini akan menangani semua logika PEMBACAAN data
+// Tugasnya: 1. Baca dari On-Chain. 2. Baca dari localStorage. 3. Tentukan state.
 const ProfileLoader = ({ children }: { children: ReactNode }) => {
   const { 
     _setProfile, 
     _setIsProfileLoading,
-    isAuthenticated, 
-    isPublishing 
+    isAuthenticated,
+    isPublishing
   } = useAnimationStore();
   
   const { address } = useAccount();
 
-  // 1. Panggil Smart Contract
-  const { 
-    data: masterCID, 
-    isLoading: isReadingContract, 
-    isError, 
-    error: readContractError 
-  } = useReadContract({
+  // 1. Baca dari Smart Contract (Data On-Chain)
+  const { data: masterCID, isLoading: isReadingContract, isError, error: readContractError } = useReadContract({
     address: USER_PROFILE_CONTRACT_ADDRESS,
     abi: userProfileAbi,
     functionName: 'getProfileCID',
@@ -147,63 +153,59 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
       enabled: !!address && isAuthenticated && !isPublishing,
     },
   });
-  
-  // 2. Efek untuk memuat data dari IPFS
+
+  // 2. Efek untuk memuat data
   useEffect(() => {
     if (!isAuthenticated) {
       _setProfile(null);
       return;
     }
-    
     if (isReadingContract) {
       _setIsProfileLoading(true);
       return;
     }
-
     if (isError) {
-      console.error("Gagal membaca smart contract:", readContractError); // <-- Digunakan di sini
-      _setProfile(DEFAULTS.defaultProfile); 
+      console.error("Gagal membaca smart contract:", readContractError);
       _setIsProfileLoading(false);
       return;
     }
 
-    if (masterCID) {
-      // 3. Jika CID ada, ambil data dari IPFS
-      const fetchFromIpfs = async (cid: string) => {
-        _setIsProfileLoading(true);
-        try {
-          const url = resolveIpfsUrl(`ipfs://${cid}`);
-          if (!url) throw new Error("CID tidak valid");
-
-          const res = await fetch(url);
-          
-          if (!res.ok) throw new Error("File tidak ditemukan di IPFS");
-          const data: Profile = await res.json();
-          _setProfile(data); // Sukses!
-        } catch (e) {
-          console.error("Gagal mengambil JSON dari IPFS:", e);
-          _setProfile(DEFAULTS.defaultProfile);
-        } finally {
-          _setIsProfileLoading(false);
-        }
-      };
-      fetchFromIpfs(masterCID as string);
+    // Fungsi async untuk memuat data
+    const loadProfileData = async () => {
+      _setIsProfileLoading(true);
+      let onChainData: Profile = DEFAULTS.defaultProfile;
       
-    } else {
-      // 4. Jika CID tidak ada (pengguna baru), berikan profil kosong
-      _setProfile(DEFAULTS.defaultProfile);
-      _setIsProfileLoading(false);
-    }
+      // 2a. Ambil data ON-CHAIN dari IPFS
+      if (masterCID) {
+        try {
+          const res = await fetch(`https://gateway.pinata.cloud/ipfs/${masterCID}`);
+          if (res.ok) {
+            onChainData = await res.json();
+          }
+        } catch (e) {
+          console.error("Gagal mengambil data on-chain dari IPFS:", e);
+        }
+      }
 
-  }, [
-    isAuthenticated, 
-    masterCID, 
-    isReadingContract, 
-    isError, 
-    readContractError, 
-    _setProfile, 
-    _setIsProfileLoading
-  ]);
+      // 2b. Ambil data DRAF dari localStorage
+      const localDraftJson = localStorage.getItem(`draftProfile_${address}`);
+      if (localDraftJson) {
+        console.log("Memuat draf lokal dari localStorage...");
+        _setProfile(JSON.parse(localDraftJson));
+      } else {
+        // Jika tidak ada draf, muat data on-chain
+        _setProfile(onChainData);
+      }
+      
+      // Simpan data on-chain di state terpisah untuk perbandingan
+      (window as any).__onChainProfile = onChainData;
+
+      _setIsProfileLoading(false);
+    };
+
+    loadProfileData();
+
+  }, [isAuthenticated, masterCID, isReadingContract, isError, readContractError, address, _setProfile, _setIsProfileLoading]);
 
   return <>{children}</>;
 };
@@ -216,9 +218,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const chainId = wagmiChainId || 1;
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); 
-  const [isProfileLoading, setIsProfileLoading] = useState(true); 
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  
+  // 'profile' sekarang adalah DRAF LOKAL
+  const [profile, setProfile] = useState<Profile | null>(null); 
+  
   const [extensions, setExtensions] = useState<AnimationExtension[]>(() => {
     if (typeof window === 'undefined') return DEFAULTS.extensions;
     return JSON.parse(localStorage.getItem('animation_extensions') || '[]');
@@ -297,6 +302,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   // --- Fungsi Logout ---
   const logout = useCallback(async () => {
+    if (address) {
+      localStorage.removeItem(`draftProfile_${address}`); // Hapus draf
+    }
     setIsAuthenticated(false);
     setProfile(null); 
     try {
@@ -304,18 +312,25 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Gagal clear session di server:", error);
     }
-    disconnect(); // Ini akan memicu useEffect checkSession
-  }, [disconnect]);
+    disconnect();
+  }, [disconnect, address]);
 
-  const saveProfile = useCallback((dataToSave: Partial<Profile>) => {
-    if (!isAuthenticated) return;
-    setProfile(prev => ({ ...(prev as Profile), ...dataToSave })); 
-  }, [isAuthenticated]);
+  // --- FUNGSI Simpan Draf (Auto-Save) ---
+  const saveDraft = useCallback((dataToSave: Partial<Profile>) => {
+    if (!isAuthenticated || !address) return;
+    
+    setProfile(prev => {
+      const newDraft = { ...(prev as Profile), ...dataToSave };
+      // Simpan ke localStorage secara otomatis
+      localStorage.setItem(`draftProfile_${address}`, JSON.stringify(newDraft));
+      return newDraft;
+    });
+  }, [isAuthenticated, address]);
 
+  // --- Logika Animasi ---
   const setActiveAnimation = useCallback(async (newAnimation: string) => {
-    saveProfile({ animation: newAnimation });
-  }, [saveProfile]);
-
+    saveDraft({ animation: newAnimation });
+  }, [saveDraft]);
   const activeAnimation = profile?.animation || DEFAULTS.animation;
 
   const uploadFileToApi = async (file: File): Promise<string> => {
@@ -347,35 +362,58 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const publishChangesToOnChain = useCallback(async () => {
-    if (!profile) return alert("Profil belum dimuat.");
+    if (!profile || !address) return alert("Profil belum dimuat.");
+    
     setIsPublishing(true);
-    const dataToUpload = { ...profile };
+    let dataToUpload = { ...profile }; // Ambil DRAF saat ini
 
     try {
-      // 1. Upload File-file
-      if (dataToUpload.pendingImageFile) {
-        const cid = await uploadFileToApi(dataToUpload.pendingImageFile);
-        dataToUpload.imageUrl = `ipfs://${cid}`;
-        delete dataToUpload.pendingImageFile;
-      }
-      if (dataToUpload.pendingReadmeFile) {
-        const cid = await uploadFileToApi(dataToUpload.pendingReadmeFile);
-        dataToUpload.readmeUrl = `ipfs://${cid}`;
-        dataToUpload.readmeName = dataToUpload.pendingReadmeFile.name;
-        delete dataToUpload.pendingReadmeFile;
-      } else if (dataToUpload.readmeName === null) {
-        dataToUpload.readmeUrl = null;
-      }
+      // 1. Upload semua file mentah (pending)
+      dataToUpload = JSON.parse(JSON.stringify(profile));
 
-      for (const project of dataToUpload.projects) {
-        if (project.pendingMediaFile) {
-          const cid = await uploadFileToApi(project.pendingMediaFile);
-          project.mediaIpfsUrl = `ipfs://${cid}`;
-          delete project.pendingMediaFile;
-          delete project.mediaPreview;
+      // Fungsi helper untuk mengubah blob: kembali ke File
+      const blobUrlToFile = async (blobUrl: string): Promise<File | null> => {
+        try {
+          const response = await fetch(blobUrl);
+          const blob = await response.blob();
+          return new File([blob], "upload", { type: blob.type });
+        } catch (e) { return null; }
+      };
+
+      // Upload Foto Profil
+      if (dataToUpload.pendingImageFile) {
+        const file = await blobUrlToFile(dataToUpload.pendingImageFile as any);
+        if (file) {
+          const cid = await uploadFileToApi(file);
+          dataToUpload.imageUrl = `ipfs://${cid}`;
         }
       }
+      // Hapus data mentah
+      delete dataToUpload.pendingImageFile;
+     
+      // Upload Foto Profil (jika blob)
+      if (dataToUpload.imageUrl && dataToUpload.imageUrl.startsWith('blob:')) {
+        const file = await blobUrlToFile(dataToUpload.imageUrl);
+        if(file) dataToUpload.imageUrl = `ipfs://${await uploadFileToApi(file)}`;
+      }
 
+      // Upload Readme (jika blob)
+      if (dataToUpload.readmeUrl && dataToUpload.readmeUrl.startsWith('blob:')) {
+        const file = await blobUrlToFile(dataToUpload.readmeUrl);
+        if(file) dataToUpload.readmeUrl = `ipfs://${await uploadFileToApi(file)}`;
+      }
+
+      // Upload Media Proyek (jika blob)
+      for (const project of dataToUpload.projects) {
+        if (project.mediaPreview && project.mediaPreview.startsWith('blob:')) {
+          const file = await blobUrlToFile(project.mediaPreview);
+          if (file) {
+            project.mediaIpfsUrl = `ipfs://${await uploadFileToApi(file)}`;
+            project.mediaPreview = null; // Hapus blob
+          }
+        }
+      }
+      
       // 2. Upload Master JSON
       const masterCID = await uploadJsonToApi(dataToUpload);
       console.log("Master CID didapat:", masterCID);
@@ -388,15 +426,17 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         args: [masterCID],
       });
 
-      // 4. Perbarui Vercel KV (Cache)
+      // 4. Vercel KV (Cache)
       await fetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dataToUpload),
       });
 
-      // 5. Perbarui state React
-      setProfile(dataToUpload);
+      // 5. Perbarui state React & Hapus Draf
+      setProfile(dataToUpload); // Atur state ke data yang sudah bersih (tanpa blob)
+      localStorage.removeItem(`draftProfile_${address}`); // Hapus draf
+      (window as any).__onChainProfile = dataToUpload; // Perbarui data on-chain
 
       alert("Sukses! Perubahan Anda telah dipublikasikan ke on-chain.");
 
@@ -406,7 +446,15 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsPublishing(false);
     }
-  }, [profile, writeContractAsync]);
+
+  }, [profile, address, writeContractAsync]);
+
+  // --- Cek Perubahan ---
+  const hasUnpublishedChanges = useMemo(() => {
+    if (!profile || !(window as any).__onChainProfile) return false;
+    // Perbandingan sederhana. Untuk perbandingan 'deep', kita perlu library.
+    return JSON.stringify(profile) !== JSON.stringify((window as any).__onChainProfile);
+  }, [profile]);
 
   const addExtension = (repoUrl: string) => {
     const newExtension: AnimationExtension = {
@@ -422,23 +470,25 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   const value = {
     isAuthenticated,
-    isLoading, // Ini untuk cek sesi awal
-    profile, 
+    isLoading,
+    isProfileLoading,
+    profile, // Ini adalah 'draftProfile'
     login,
     logout,
-    saveProfile,
+    saveDraft, // Ganti 'saveProfile' dengan 'saveDraft'
+    saveProfile: saveDraft, // Alias untuk kompatibilitas
     activeAnimation, 
     setActiveAnimation,
     extensions,
     addExtension,
-    isHydrated: !isLoading && !isProfileLoading && !!profile, 
+    isHydrated: !isLoading && !isProfileLoading && !!profile,
     isPublishing,
     publishChangesToOnChain,
+    hasUnpublishedChanges, // Kirim status ini ke UI
 
-    // Fungsi internal untuk ProfileLoader
+    // Fungsi internal
     _setProfile: setProfile,
-    _setIsProfileLoading: setIsProfileLoading, 
-    isProfileLoading, 
+    _setIsProfileLoading: setIsProfileLoading,
   };
 
   return (

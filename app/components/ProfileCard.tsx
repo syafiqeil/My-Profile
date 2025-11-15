@@ -281,7 +281,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
           <img
             className="relative -mt-12 mb-4 h-24 w-24"
             src={displayImageUrl} 
-            alt="profile gue"
+            alt="profile"
             width={96}
             height={96}
           />

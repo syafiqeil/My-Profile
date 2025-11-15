@@ -2,9 +2,9 @@
 
 "use client";
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
-import { useAnimationStore, Profile, Project } from '@/app/lib/useAnimationStore'; 
+import { useAnimationStore } from '@/app/lib/useAnimationStore'; 
 import { useRouter } from 'next/navigation';
-import { resolveIpfsUrl } from '@/app/lib/utils';
+import { resolveIpfsUrl, useDebounce } from '@/app/lib/utils';
 
 const ImageIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
@@ -19,7 +19,7 @@ const TrashIcon = () => (
 export default function ProfileSettingsPage() {
   const {
     profile,
-    saveProfile: updateGlobalState, 
+    saveDraft, 
     activeAnimation,
     setActiveAnimation,
     extensions,
@@ -30,122 +30,75 @@ export default function ProfileSettingsPage() {
 
   const router = useRouter();
 
-  // --- State untuk Form Teks ---
+  // --- State LOKAL untuk form (untuk UI cepat) ---
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [github, setGithub] = useState('');
-
-  // --- State untuk File Mentah (BARU) ---
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [readmeFile, setReadmeFile] = useState<File | null>(null);
-
-  // --- State untuk Preview (Lokal) ---
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [readmeFileName, setReadmeFileName] = useState<string | null>(null);
-
-  // --- State untuk UI ---
-  const [isSaving, setIsSaving] = useState(false); // Untuk tombol Simpan
-
-  // State untuk form ekstensi
   const [repoUrl, setRepoUrl] = useState('');
 
-  // --- Refs untuk memicu input file ---
+  // Refs
   const imageInputRef = useRef<HTMLInputElement>(null);
   const readmeInputRef = useRef<HTMLInputElement>(null);
 
-  // Efek untuk mengisi form saat profil dimuat
+  // --- 1. Muat data dari Global ke Lokal saat komponen dimuat ---
   useEffect(() => {
     if (profile) {
       setName(profile.name || '');
       setBio(profile.bio || '');
       setGithub(profile.github || '');
-      
-      // Ambil URL gambar dan nama file dari state global
-      // @ts-ignore (Kita akan perbaiki tipenya nanti)
-      setProfileImagePreview(profile.imageUrl || '/profilgue.png'); 
+      // @ts-ignore
+      setProfileImagePreview(resolveIpfsUrl(profile.imageUrl) || "/profilgue.png");
       // @ts-ignore
       setReadmeFileName(profile.readmeName || null);
     }
-  }, [profile]);
-  
-  // --- Efek untuk cleanup blob URL ---
-  useEffect(() => {
-    return () => {
-      if (profileImagePreview && profileImagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(profileImagePreview);
-      }
-    };
-  }, [profileImagePreview]);
+  }, [profile, isHydrated]); // Jalankan saat data global siap
 
-  // --- Handler BARU untuk Upload Foto ---
+  // --- 2. Buat Draf Debounced ---
+  const debouncedDraft = useDebounce({
+    name,
+    bio,
+    github,
+    imageUrl: profileImageFile ? profileImagePreview : (profile?.imageUrl || null),
+    readmeUrl: readmeFile ? URL.createObjectURL(readmeFile) : (profile?.readmeUrl || null),
+    readmeName: readmeFileName,
+  }, 1000); // Tunda 1 detik
+
+  // --- 3. Auto-Save ke Global State ---
+  useEffect(() => {
+    // Jangan simpan jika drafnya adalah nilai default (saat awal muat)
+    if (!isHydrated) return;
+    
+    // Simpan draf ke global state (dan localStorage)
+    saveDraft(debouncedDraft);
+    
+  }, [debouncedDraft, saveDraft, isHydrated]);
+
+  // --- Handlers (Sama, tapi tidak perlu 'isSaving') ---
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      // Hapus preview lama
       if (profileImagePreview && profileImagePreview.startsWith('blob:')) {
         URL.revokeObjectURL(profileImagePreview);
       }
-      setProfileImageFile(file); // Simpan File mentah
-      setProfileImagePreview(URL.createObjectURL(file)); // Buat preview baru
+      setProfileImageFile(file);
+      setProfileImagePreview(URL.createObjectURL(file)); // Ini akan memicu debouncer
     }
   };
-
-  // --- Handler BARU untuk Upload README ---
   const handleReadmeChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && (file.name.endsWith('.md') || file.type === 'text/markdown')) {
-      setReadmeFile(file); // Simpan File mentah
-      setReadmeFileName(file.name);
+      setReadmeFile(file);
+      setReadmeFileName(file.name); // Ini akan memicu debouncer
     }
   };
-
   const handleRemoveReadme = () => {
-    setReadmeFile(null); // Hapus file mentah
-    setReadmeFileName(null);
-    if(readmeInputRef.current) {
-      readmeInputRef.current.value = ""; 
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    // Fungsi ini sekarang HANYA menyimpan ke state global (optimistic update)
-    // Logika IPFS dan on-chain akan dipindahkan
-    setIsSaving(true);
-    
-    // Kita buat data profil baru
-    const newProfileData = {
-      name: name,
-      bio: bio,
-      github: github,
-      animation: activeAnimation,
-      // @ts-ignore
-      imageUrl: profileImageFile ? profileImagePreview : (profile?.imageUrl || null),
-      // @ts-ignore
-      readmeUrl: readmeFile ? URL.createObjectURL(readmeFile) : (profile?.readmeUrl || null), // Simpan blob sementara
-      // @ts-ignore
-      readmeName: readmeFileName,
-
-      // Simpan juga file mentahnya di state global (PENTING)
-      // Kita perlu 'any' di sini untuk sementara
-      // @ts-ignore
-      pendingImageFile: profileImageFile,
-      // @ts-ignore
-      pendingReadmeFile: readmeFile,
-    };
-
-    // Panggil 'saveProfile' dari SessionProvider
-    // yang hanya memperbarui React state
-    updateGlobalState({
-      ...profile, // Ambil semua data lama (termasuk projects & activity)
-      ...newProfileData, // Timpa dengan data profil baru
-    });
-
-    // Reset file mentah
-    setProfileImageFile(null);
     setReadmeFile(null);
-    
-    setIsSaving(false);
-    alert("Perubahan profil disimpan (secara lokal).");
+    setReadmeFileName(null); // Ini akan memicu debouncer
+    if(readmeInputRef.current) readmeInputRef.current.value = ""; 
   };
 
   const handleImport = () => {
@@ -263,16 +216,6 @@ export default function ProfileSettingsPage() {
                 className="hidden"
               />
             </div>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={handleSaveProfile}
-              disabled={isSaving} 
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
-            >
-              {isSaving ? "Menyimpan ke On-chain..." : "Simpan Perubahan Profil"}
-            </button>
           </div>
         </div>
       </section>
