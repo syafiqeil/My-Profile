@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { Project } from '../lib/SessionProvider'; 
+import { resolveIpfsUrl } from '../lib/utils';
 
 // Ikon X untuk menutup
 const XIcon = () => (
@@ -27,8 +28,21 @@ interface ProjectModalProps {
 export const ProjectModal = ({ project, onClose }: ProjectModalProps) => {
   if (!project) return null;
 
-  const isVideo = project.mediaPreview && (project.mediaPreview.startsWith('blob:video/') || project.mediaPreview.startsWith('data:video/'));
-
+  // 2. Tentukan URL media. Prioritaskan preview (blob) jika ada,
+  //    jika tidak, gunakan mediaIpfsUrl yang sudah dipublikasi.
+  const mediaUrl = project.mediaPreview 
+    ? project.mediaPreview 
+    : resolveIpfsUrl(project.mediaIpfsUrl); //
+  
+  // 3. Cek apakah ini video
+  const isVideo = mediaUrl && (
+    mediaUrl.startsWith('blob:video/') || 
+    mediaUrl.startsWith('data:video/') || 
+    mediaUrl.endsWith('.mp4') || 
+    mediaUrl.endsWith('.webm') ||
+    mediaUrl.endsWith('.mov')
+  );
+ 
   return (
     // Lapisan Latar Belakang (Backdrop)
     <div
@@ -52,10 +66,10 @@ export const ProjectModal = ({ project, onClose }: ProjectModalProps) => {
 
         {/* Konten Media (Foto/Video) */}
         <div className="w-full h-64 md:h-96 bg-zinc-100">
-          {project.mediaPreview ? (
+          {mediaUrl ? ( // Cek 'mediaUrl' (bukan project.mediaPreview)
             isVideo ? (
               <video
-                src={project.mediaPreview}
+                src={mediaUrl} // Gunakan 'mediaUrl'
                 className="w-full h-full object-contain"
                 autoPlay
                 controls
@@ -64,7 +78,7 @@ export const ProjectModal = ({ project, onClose }: ProjectModalProps) => {
               />
             ) : (
               <img
-                src={project.mediaPreview}
+                src={mediaUrl} // Gunakan 'mediaUrl'
                 alt={project.name}
                 className="w-full h-full object-contain"
               />

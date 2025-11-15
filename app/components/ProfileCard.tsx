@@ -279,9 +279,8 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
         {/* Konten Utama Profil */}
         <div className="flex flex-1 flex-col p-6 pt-0">
           <img
-            className="relative -mt-12 mb-4 h-24 w-24"
+            className="relative -mt-12 mb-4 h-24 w-24 rounded-full object-cover"
             src={displayImageUrl} 
-            alt="profile"
             width={96}
             height={96}
           />

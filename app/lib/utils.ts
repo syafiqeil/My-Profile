@@ -2,27 +2,28 @@
 
 import { useState, useEffect } from 'react';
 
+const IPFS_GATEWAY = 'https://ipfs.io';
+
 /**
  * Mengubah URL IPFS (ipfs://...) atau URL preview (blob:...)
  * menjadi URL HTTP yang dapat di-render oleh browser.
- * Menggunakan gateway Pinata yang andal.
+ * LANGSUNG menggunakan gateway IPFS publik.
  */
 export const resolveIpfsUrl = (url: string | null | undefined): string | null => {
   if (!url) return null;
 
   if (url.startsWith('ipfs://')) {
     const cid = url.replace('ipfs://', '');
-    return `/api/proxy-media?cid=${cid}`;
+    // Langsung arahkan ke gateway publik
+    return `${IPFS_GATEWAY}/ipfs/${cid}`;
   }
   
+  // Tetap dukung blob URL untuk preview
   if (url.startsWith('blob:') || url.startsWith('http')) {
     return url;
   }
   
-  // Jika URL-nya sudah /api/proxy-media (dari draf lokal)
-  if (url.startsWith('/api/proxy-media')) {
-    return url;
-  }
+  // Hapus referensi lama ke /api/proxy-media
   
   return null;
 };

@@ -30,7 +30,7 @@ export default function ProfileSettingsPage() {
 
   const router = useRouter();
 
-  // --- State LOKAL untuk form (untuk UI cepat) ---
+  // --- State LOKAL untuk form ---
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [github, setGithub] = useState('');
@@ -39,6 +39,7 @@ export default function ProfileSettingsPage() {
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [readmeFileName, setReadmeFileName] = useState<string | null>(null);
   const [repoUrl, setRepoUrl] = useState('');
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Refs
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -48,9 +49,8 @@ export default function ProfileSettingsPage() {
 
   // --- 1. Muat data dari Global ke Lokal saat komponen dimuat ---
   useEffect(() => {
-    // Hanya muat data ke form JIKA 'profile' ada
-    // dan JIKA initial load BELUM selesai
-    if (profile && !isInitialLoadDone.current) { 
+    // Hanya muat JIKA isHydrated true, profile ada, DAN kita belum memuat
+    if (isHydrated && profile && !hasLoaded) { 
       setName(profile.name || '');
       setBio(profile.bio || '');
       setGithub(profile.github || '');
@@ -59,35 +59,34 @@ export default function ProfileSettingsPage() {
       // @ts-ignore
       setReadmeFileName(profile.readmeName || null);
       
-      // --- 3. SET BENDERA (FLAG) ---
-      // Tandai bahwa pemuatan awal selesai
-      isInitialLoadDone.current = true;
+      // Tandai bahwa pemuatan lokal selesai
+      setHasLoaded(true);
     }
-  }, [profile]);
+  }, [isHydrated, profile, hasLoaded]);
 
   // --- 2. Buat Draf Debounced ---
   const debouncedDraft = useDebounce({
     name,
     bio,
     github,
+    // Cek profileImageFile dulu, baru cek profile.imageUrl
     imageUrl: profileImageFile ? profileImagePreview : (profile?.imageUrl || null),
     readmeUrl: readmeFile ? URL.createObjectURL(readmeFile) : (profile?.readmeUrl || null),
     readmeName: readmeFileName,
-  }, 1000); // Tunda 1 detik
+  }, 1000); //
 
   // --- 3. Auto-Save ke Global State ---
   useEffect(() => {
-    // JANGAN SIMPAN jika pemuatan awal belum selesai
-    if (!isInitialLoadDone.current) {
-      return; // Lewati proses simpan
+    // JANGAN SIMPAN jika form belum terisi (hasLoaded false)
+    if (!hasLoaded) {
+      return; 
     }
     
     // Sekarang aman untuk auto-save
     saveDraft(debouncedDraft);
     
-  }, [debouncedDraft, saveDraft]);
+  }, [debouncedDraft, saveDraft, hasLoaded]);
 
-  // --- Handlers (Sama, tapi tidak perlu 'isSaving') ---
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
@@ -95,38 +94,38 @@ export default function ProfileSettingsPage() {
         URL.revokeObjectURL(profileImagePreview);
       }
       setProfileImageFile(file);
-      setProfileImagePreview(URL.createObjectURL(file)); // Ini akan memicu debouncer
+      setProfileImagePreview(URL.createObjectURL(file)); 
     }
   };
   const handleReadmeChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && (file.name.endsWith('.md') || file.type === 'text/markdown')) {
       setReadmeFile(file);
-      setReadmeFileName(file.name); // Ini akan memicu debouncer
+      setReadmeFileName(file.name); 
     }
   };
   const handleRemoveReadme = () => {
     setReadmeFile(null);
-    setReadmeFileName(null); // Ini akan memicu debouncer
+    setReadmeFileName(null); 
     if(readmeInputRef.current) readmeInputRef.current.value = ""; 
   };
-
   const handleImport = () => {
     if (repoUrl.trim()) {
       addExtension(repoUrl.trim());
       setRepoUrl(''); 
     }
   };
-
   const handleDisconnect = () => { 
     logout();
     router.push('/');
   };
 
-  if (!isHydrated) {
+  // Tampilkan loading jika data global belum siap ATAU form lokal belum terisi
+  if (!isHydrated || !hasLoaded) {
     return <div className="text-zinc-500">Memuat pengaturan profil...</div>;
   }
 
+  // Gunakan 'displayImage' yang sudah ada
   const displayImage = profileImageFile ? profileImagePreview : resolveIpfsUrl(profile?.imageUrl) || "/profilgue.png";
 
   return (

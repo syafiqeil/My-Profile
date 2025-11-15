@@ -1,8 +1,9 @@
 // app/settings/activity/page.tsx
-
 "use client";
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react'; 
 import { useAnimationStore, ActivityItem } from '@/app/lib/useAnimationStore';
+import { useDebounce } from '@/app/lib/utils'; 
 
 const BookIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20v2H6.5A2.5 2.5 0 0 1 4 16.5v-11A2.5 2.5 0 0 1 6.5 3H20v11H6.5A2.5 2.5 0 0 1 4 11.5v0Z" /></svg>
@@ -18,7 +19,9 @@ const TrashIcon = () => (
 );
 
 export default function ActivitySettingsPage() {
-  const { profile, saveProfile, isHydrated } = useAnimationStore();
+  const { profile, saveDraft, isHydrated } = useAnimationStore();
+  const isInitialLoadDone = useRef(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // State lokal untuk formulir
   const [email, setEmail] = useState('');
@@ -31,14 +34,36 @@ export default function ActivitySettingsPage() {
   const [newCertTitle, setNewCertTitle] = useState('');
   const [newCertUrl, setNewCertUrl] = useState('');
 
-  // Isi form saat data global dimuat
+  // --- 1. Muat data dari Global ke Lokal saat data SIAP ---
   useEffect(() => {
-    if (profile?.activity) {
-      setEmail(profile.activity.contactEmail || '');
-      setBlogPosts(profile.activity.blogPosts || []);
-      setCertificates(profile.activity.certificates || []);
+    // Hanya muat JIKA isHydrated true, profile ada, DAN kita belum memuat
+    if (isHydrated && profile && !hasLoaded) {
+      setEmail(profile.activity?.contactEmail || '');
+      setBlogPosts(profile.activity?.blogPosts || []);
+      setCertificates(profile.activity?.certificates || []);
+      // Tandai bahwa pemuatan lokal selesai
+      setHasLoaded(true);
     }
-  }, [profile]);
+  }, [isHydrated, profile, hasLoaded]);
+
+  // --- Logika Auto-Save ---
+  const debouncedActivity = useDebounce({
+    contactEmail: email,
+    blogPosts: blogPosts,
+    certificates: certificates
+  }, 1000); // Tunda 1 detik
+
+  // --- 3. Auto-Save ke Global State ---
+  useEffect(() => {
+    // JANGAN SIMPAN jika form belum terisi (hasLoaded false)
+    if (!hasLoaded) {
+      return;
+    }
+    
+    // Simpan draf setiap kali nilai debounced berubah
+    saveDraft({ activity: debouncedActivity });
+    
+  }, [debouncedActivity, saveDraft, hasLoaded]);
 
   // --- Handlers ---
   const handleAddPost = () => {
@@ -61,19 +86,7 @@ export default function ActivitySettingsPage() {
     setCertificates(certificates.filter(cert => cert.id !== id));
   };
 
-  // --- Simpan Global ---
-  const handleSaveActivity = () => {
-    saveProfile({
-      activity: {
-        contactEmail: email,
-        blogPosts: blogPosts,
-        certificates: certificates
-      }
-    });
-    alert("Pengaturan Aktivitas Disimpan!");
-  };
-
-  if (!isHydrated) {
+  if (!isHydrated || !hasLoaded) {
     return <div className="text-zinc-500">Memuat pengaturan aktivitas...</div>;
   }
 
@@ -177,16 +190,6 @@ export default function ActivitySettingsPage() {
           </button>
         </div>
       </section>
-
-      {/* --- Tombol Simpan Global --- */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSaveActivity}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-        >
-          Simpan Pengaturan Aktivitas
-        </button>
-      </div>
     </div>
   );
 }

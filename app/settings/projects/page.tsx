@@ -3,21 +3,10 @@
 "use client";
 
 import React, { useState, useRef, ChangeEvent, FormEvent, useEffect } from 'react';
-import { useAnimationStore, Project } from '@/app/lib/useAnimationStore';
+import { useAnimationStore, Project } from '@/app/lib/useAnimationStore'; 
 import { resolveIpfsUrl } from '@/app/lib/utils';
 
-interface Project {
-  id: string; 
-  name: string;
-  description: string;
-  mediaPreview: string | null; 
-  tags: string[];
-  isFeatured: boolean; 
-  // Nanti kita akan tambahkan:
-  // mediaIpfsUrl: string | null;
-  // projectUrl: string | null;
-}
-
+// ... (Komponen Ikon tetap sama) ...
 const PlusIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
 );
@@ -36,8 +25,9 @@ const XIcon = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
 );
 
+
 export default function ProjectsSettingsPage() {
-  const { profile, saveProfile, isHydrated } = useAnimationStore();
+  const { profile, saveDraft, isHydrated } = useAnimationStore();
   const projects = profile?.projects || [];
   
   const setProjects = (newProjects: Project[] | ((prev: Project[]) => Project[])) => {
@@ -47,9 +37,7 @@ export default function ProjectsSettingsPage() {
     } else {
       finalProjects = newProjects;
     }
-    // Ganti saveProfile dengan updateGlobalState (nama baru di langkah berikutnya)
-    // Untuk saat ini, kita anggap saveProfile hanya update state
-    saveProfile({ projects: finalProjects });
+    saveDraft({ projects: finalProjects });
   };
   
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -64,8 +52,6 @@ export default function ProjectsSettingsPage() {
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Ketika komponen di-unmount atau mediaPreview berubah,
-    // kita hapus URL 'blob:' yang lama dari memori browser
     return () => {
       if (mediaPreview && mediaPreview.startsWith('blob:')) {
         URL.revokeObjectURL(mediaPreview);
@@ -73,7 +59,6 @@ export default function ProjectsSettingsPage() {
     };
   }, [mediaPreview]);
 
-  // Pisahkan proyek unggulan dan proyek lainnya
   const featuredProjects = projects.filter(p => p.isFeatured);
   const otherProjects = projects.filter(p => !p.isFeatured);
 
@@ -128,22 +113,28 @@ export default function ProjectsSettingsPage() {
     e.preventDefault();
     if (!name) return alert("Nama proyek tidak boleh kosong.");
 
-    // Ambil file mentah dari proyek yang sedang diedit (jika ada)
     const existingProject = editingId ? projects.find(p => p.id === editingId) : null;
     
+    // Dapatkan URL blob yang ada (jika ada) untuk media
+    let existingMediaPreview = existingProject?.mediaPreview || null;
+    if (!mediaFile && existingProject?.mediaIpfsUrl) {
+      existingMediaPreview = resolveIpfsUrl(existingProject.mediaIpfsUrl);
+    }
+
     const newProject: Project = {
       id: editingId || `proj_${Date.now()}`,
       name,
       description,
-      mediaPreview,
+      // Gunakan media baru JIKA ada, jika tidak, pertahankan media lama
+      mediaPreview: mediaFile ? mediaPreview : existingMediaPreview,
       tags,
       projectUrl,
       isFeatured: existingProject?.isFeatured || false,
-      pendingMediaFile: mediaFile || existingProject?.pendingMediaFile || null,
-      mediaIpfsUrl: existingProject?.mediaIpfsUrl || null 
+      // Tautkan file mentah HANYA jika file baru dipilih
+      pendingMediaFile: mediaFile || null,
+      // Pertahankan IPFS URL lama JIKA tidak ada file baru
+      mediaIpfsUrl: mediaFile ? null : (existingProject?.mediaIpfsUrl || null)
     };
-    
-    if (mediaFile) newProject.mediaIpfsUrl = null;
 
     if (editingId) {
       setProjects(projects.map(p => (p.id === editingId ? newProject : p)));
@@ -152,14 +143,17 @@ export default function ProjectsSettingsPage() {
     }
     
     resetForm();
-    alert("Proyek disimpan (secara lokal).");
+    // Komentar ini sudah tidak relevan
+    // alert("Proyek disimpan (secara lokal).");
   };
 
   const handleEdit = (project: Project) => {
     setEditingId(project.id);
     setName(project.name);
     setDescription(project.description);
-    setMediaPreview(resolveIpfsUrl(project.mediaIpfsUrl) || project.mediaPreview);
+    // Logika yang disempurnakan untuk menampilkan gambar/video yang sudah ada
+    const existingMedia = project.mediaPreview || resolveIpfsUrl(project.mediaIpfsUrl);
+    setMediaPreview(existingMedia);
     setTags(project.tags);
     setProjectUrl(project.projectUrl || '');
     setMediaFile(project.pendingMediaFile || null);
@@ -168,14 +162,13 @@ export default function ProjectsSettingsPage() {
   const handleDelete = (id: string) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus proyek ini?")) {
       setProjects(projects.filter(p => p.id !== id));
-      // TODO: Panggil fungsi saveDashboard() global di sini nanti
+      // Tidak perlu panggil saveDashboard() lagi, setProjects sudah melakukannya
     }
   };
 
   const handleToggleFeatured = (id: string) => {
     const project = projects.find(p => p.id === id)!;
     
-    // Batasi 3 proyek unggulan
     if (!project.isFeatured && featuredProjects.length >= 3) {
       alert("Anda hanya dapat memiliki 3 proyek unggulan.");
       return;
@@ -184,10 +177,9 @@ export default function ProjectsSettingsPage() {
     setProjects(projects.map(p => 
       p.id === id ? { ...p, isFeatured: !p.isFeatured } : p
     ));
-    // TODO: Panggil fungsi saveDashboard() global di sini nanti
+    // Tidak perlu panggil saveDashboard() lagi, setProjects sudah melakukannya
   };
 
-  // 4. Tambahkan Pengecekan 'isHydrated'
   if (!isHydrated) {
     return <div className="text-zinc-500">Memuat data proyek...</div>;
   }
@@ -225,10 +217,10 @@ export default function ProjectsSettingsPage() {
             <div className="mt-1 flex items-center gap-3">
               <div className="w-24 h-16 rounded-lg border border-zinc-200 bg-zinc-50 flex items-center justify-center overflow-hidden">
                 {mediaPreview ? (
-                  mediaPreview.startsWith('data:image/') || mediaPreview.startsWith('blob:image/') ? (
-                    <img src={mediaPreview} alt="Preview" className="w-full h-full object-cover" />
-                  ) : (
+                  mediaPreview.startsWith('blob:video/') || mediaPreview.endsWith('.mp4') || mediaPreview.endsWith('.webm') ? (
                     <video src={mediaPreview} className="w-full h-full object-cover" autoPlay muted loop />
+                  ) : (
+                    <img src={mediaPreview} alt="Preview" className="w-full h-full object-cover" />
                   )
                 ) : (
                   <span className="text-xs text-zinc-400">Preview</span>
@@ -359,14 +351,19 @@ const ProjectListItem = ({
   onDelete: (id: string) => void,
   onToggleFeatured: (id: string) => void
 }) => {
+  
+  // Logika untuk menampilkan preview yang benar
+  const mediaUrl = project.mediaPreview || resolveIpfsUrl(project.mediaIpfsUrl);
+  const isVideo = mediaUrl && (mediaUrl.startsWith('blob:video/') || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.webm'));
+
   return (
     <div className="flex items-center gap-3 w-full rounded-lg border border-zinc-200 p-3">
       <div className="w-16 h-10 rounded-md border border-zinc-200 bg-zinc-50 flex-shrink-0 overflow-hidden">
-        {project.mediaPreview ? (
-          project.mediaPreview.startsWith('data:image/') || project.mediaPreview.startsWith('blob:image/') ? (
-            <img src={project.mediaPreview} alt={project.name} className="w-full h-full object-cover" />
+        {mediaUrl ? (
+          isVideo ? (
+            <video src={mediaUrl} className="w-full h-full object-cover" autoPlay muted loop />
           ) : (
-            <video src={project.mediaPreview} className="w-full h-full object-cover" autoPlay muted loop />
+            <img src={mediaUrl} alt={project.name} className="w-full h-full object-cover" />
           )
         ) : null}
       </div>

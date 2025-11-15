@@ -114,9 +114,11 @@ interface SessionContextType {
   // Fungsi internal
   _setProfile: (profile: Profile | null) => void;
   _setIsProfileLoading: (loading: boolean) => void;
+  isHydrated: boolean; // <--- Tambahkan ini ke tipe
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
+const IPFS_GATEWAY = 'https://ipfs.io';
 
 const DEFAULTS = {
   animation: 'dino',
@@ -128,8 +130,7 @@ const DEFAULTS = {
   } as Profile
 };
 
-// --- KOMPONEN HELPER: PROFILE LOADER ---
-// Tugasnya: 1. Baca dari On-Chain. 2. Baca dari localStorage. 3. Tentukan state.
+// --- KOMPONEN HELPER: PROFILE LOADER (LOGIKA DIPERBARUI) ---
 const ProfileLoader = ({ children }: { children: ReactNode }) => {
   const { 
     _setProfile, 
@@ -151,59 +152,43 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
   });
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      _setProfile(null);
-      return;
-    }
-    if (isReadingContract) {
-      _setIsProfileLoading(true);
-      return;
-    }
-    if (isError) {
-      console.error("Gagal membaca smart contract:", readContractError);
-      _setIsProfileLoading(false);
-      return;
-    }
-
+    // Fungsi async di dalam useEffect
     const loadProfileData = async () => {
       _setIsProfileLoading(true);
-      let loadedProfile: Profile | null = null;
-      let dataSource: string = "";
+      let onChainProfile: Profile | null = null;
+      let loadedDraft: Profile | null = null;
 
-      // 1. Cek Draf Lokal
-      const localDraftJson = localStorage.getItem(`draftProfile_${address}`);
-      if (localDraftJson) {
-        console.log("Memuat draf lokal dari localStorage...");
-        loadedProfile = JSON.parse(localDraftJson);
-        dataSource = "Draf Lokal";
-      }
-      
-      // 2. Jika tidak ada draf, coba ambil dari On-Chain (via Proxy JSON)
-      else if (masterCID) {
+      // --- STEP 1: Selalu coba ambil data ON-CHAIN (untuk perbandingan) ---
+      if (masterCID) {
         try {
-          console.log("Mencoba mengambil data on-chain dari Proxy JSON...");
-          const res = await fetch(`/api/proxy-json?cid=${masterCID}`); 
+          console.log("Memuat data on-chain (Direct IPFS)...");
+          
+          // --- PERUBAHAN DI SINI ---
+          // URL diubah dari proxy lokal ke gateway publik
+          const ipfsUrl = `${IPFS_GATEWAY}/ipfs/${masterCID}`;
+          const res = await fetch(ipfsUrl); 
+          // --- AKHIR PERUBAHAN ---
+
           if (res.ok) {
-            loadedProfile = await res.json();
-            dataSource = "Proxy JSON (On-Chain)";
+            onChainProfile = await res.json();
           } else {
-            throw new Error(`Proxy JSON fetch gagal: status ${res.status}`);
+             // Ubah pesan error agar lebih jelas
+            throw new Error(`Direct IPFS fetch gagal: status ${res.status}`);
           }
         } catch (e) {
-          console.warn("Gagal mengambil data dari IPFS/Proxy:", e);
+          console.warn("Gagal mengambil data dari IPFS:", e);
         }
       }
-
-      // 3. Jika IPFS/Proxy gagal, coba ambil dari Cache Server (Vercel KV)
-      if (!loadedProfile) {
+      
+      // Jika IPFS gagal, coba ambil dari Cache Server (Vercel KV)
+      if (!onChainProfile) {
         try {
-          console.log("IPFS/Proxy gagal, mencoba mengambil dari cache server (/api/user/profile)...");
+          console.log("IPFS gagal, mencoba cache server (/api/user/profile)...");
           const res = await fetch('/api/user/profile');
           if (res.ok) {
             const data = await res.json();
             if (data.profile) {
-              loadedProfile = data.profile;
-              dataSource = "Cache Server (Vercel KV)";
+              onChainProfile = data.profile;
             }
           }
         } catch (e) {
@@ -211,26 +196,60 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // 4. Atur State
-      if (loadedProfile) {
-        console.log(`Profil berhasil dimuat dari: ${dataSource}`);
-        _setProfile(loadedProfile);
-        
-        if (dataSource !== "Draf Lokal") {
-          (window as any).__onChainProfile = loadedProfile;
-        }
+      // Jika semua gagal, data on-chain dianggap default
+      if (!onChainProfile) {
+        console.log("Tidak ada data on-chain ditemukan, menggunakan default.");
+        onChainProfile = DEFAULTS.defaultProfile;
+      }
+      // SELALU simpan data on-chain untuk perbandingan
+      (window as any).__onChainProfile = onChainProfile;
+
+      // --- STEP 2: Tentukan apa yang harus ditampilkan di DRAF ---
+      const localDraftJson = localStorage.getItem(`draftProfile_${address}`);
+      if (localDraftJson) {
+        console.log("Memuat draf lokal dari localStorage...");
+        loadedDraft = JSON.parse(localDraftJson);
       } else {
-        console.log("Semua sumber gagal, memuat profil default.");
-        _setProfile(DEFAULTS.defaultProfile);
-        (window as any).__onChainProfile = DEFAULTS.defaultProfile;
+        // Jika tidak ada draf lokal, gunakan data on-chain sebagai draf awal
+        console.log("Tidak ada draf lokal, menggunakan data on-chain sebagai draf.");
+        loadedDraft = onChainProfile;
       }
 
+      // --- STEP 3: Atur State ---
+      _setProfile(loadedDraft); // Set draf
       _setIsProfileLoading(false);
     };
 
-    loadProfileData();
-
-  }, [isAuthenticated, masterCID, isReadingContract, isError, address, _setProfile, _setIsProfileLoading]); // 'readContractError' dihapus dari deps array karena sudah dicek di atas
+    // --- Logika Eksekusi ---
+    if (isAuthenticated && !isReadingContract && !isPublishing) {
+      if (isError) {
+        // Error saat baca contract, tidak bisa lanjut
+        console.error("Gagal membaca smart contract:", readContractError);
+        (window as any).__onChainProfile = DEFAULTS.defaultProfile; // Set default
+        _setProfile(DEFAULTS.defaultProfile); // Set default
+        _setIsProfileLoading(false);
+      } else {
+        // Panggil fungsi async
+        loadProfileData();
+      }
+    } else if (!isAuthenticated) {
+      // Jika tidak login, bersihkan semuanya
+      _setProfile(null);
+      _setIsProfileLoading(false);
+      (window as any).__onChainProfile = undefined;
+    }
+  
+  }, [
+    isAuthenticated, 
+    masterCID, 
+    isReadingContract, 
+    isError, 
+    address, 
+    _setProfile, 
+    _setIsProfileLoading, 
+    readContractError,
+    isPublishing // Tambahkan isPublishing agar loader berjalan lagi setelah publikasi
+  ]);
 
   return <>{children}</>;
 };
@@ -269,15 +288,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       
       setIsLoading(true);
       try {
-        // Cek ke server apakah kita punya sesi Iron Session
         const res = await fetch('/api/user/profile');
         
         if (res.ok || res.status === 404) {
-           // Jika server bilang OK (200) atau NotFound (404, pengguna baru)
-           // berarti kita punya sesi yang valid.
            setIsAuthenticated(true);
         } else {
-           // Jika server bilang 401 (Unauthorized) atau lainnya
            setIsAuthenticated(false);
            setProfile(null);
         }
@@ -285,16 +300,16 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
          setIsAuthenticated(false);
          setProfile(null);
       } finally {
-        setIsLoading(false); // Selesai memuat sesi
+        setIsLoading(false); 
       }
     };
     checkSession();
-  }, [address]); // <--- Dijalankan setiap kali alamat dompet berubah
+  }, [address]); 
 
   // --- Fungsi Login ---
   const login = useCallback(async () => {
     if (!address || !chainId) return;
-    setIsLoading(true); // Tampilkan loading
+    setIsLoading(true); 
     try {
       const nonceRes = await fetch('/api/siwe/nonce');
       const nonce = await nonceRes.text();
@@ -312,16 +327,14 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       });
       if (!verifyRes.ok) throw new Error('Verifikasi gagal');
       
-      // SUKSES! Set auth ke true.
       setIsAuthenticated(true); 
-      // ProfileLoader sekarang akan otomatis mengambil data
       
     } catch (error) {
       console.error('Login gagal:', error);
       setIsAuthenticated(false);
       setProfile(null);
     } finally {
-      setIsLoading(false); // Selesai
+      setIsLoading(false); 
     }
   }, [address, chainId, signMessageAsync]);
 
@@ -358,6 +371,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   }, [saveDraft]);
   const activeAnimation = profile?.animation || DEFAULTS.animation;
 
+  // ... (Fungsi uploadFileToApi dan uploadJsonToApi tetap sama) ...
   const uploadFileToApi = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -390,13 +404,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     if (!profile || !address) return alert("Profil belum dimuat.");
     
     setIsPublishing(true);
-    let dataToUpload = { ...profile }; // Ambil DRAF saat ini
+    let dataToUpload = { ...profile }; 
 
     try {
-      // 1. Upload semua file mentah (pending)
       dataToUpload = JSON.parse(JSON.stringify(profile));
 
-      // Fungsi helper untuk mengubah blob: kembali ke File
       const blobUrlToFile = async (blobUrl: string): Promise<File | null> => {
         try {
           const response = await fetch(blobUrl);
@@ -405,17 +417,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         } catch (e) { return null; }
       };
 
-      // Upload Foto Profil
-      if (dataToUpload.pendingImageFile) {
-        const file = await blobUrlToFile(dataToUpload.pendingImageFile as any);
-        if (file) {
-          const cid = await uploadFileToApi(file);
-          dataToUpload.imageUrl = `ipfs://${cid}`;
-        }
-      }
-      // Hapus data mentah
-      delete dataToUpload.pendingImageFile;
-     
       // Upload Foto Profil (jika blob)
       if (dataToUpload.imageUrl && dataToUpload.imageUrl.startsWith('blob:')) {
         const file = await blobUrlToFile(dataToUpload.imageUrl);
@@ -427,17 +428,23 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         const file = await blobUrlToFile(dataToUpload.readmeUrl);
         if(file) dataToUpload.readmeUrl = `ipfs://${await uploadFileToApi(file)}`;
       }
-
+      
       // Upload Media Proyek (jika blob)
       for (const project of dataToUpload.projects) {
         if (project.mediaPreview && project.mediaPreview.startsWith('blob:')) {
           const file = await blobUrlToFile(project.mediaPreview);
           if (file) {
             project.mediaIpfsUrl = `ipfs://${await uploadFileToApi(file)}`;
-            project.mediaPreview = null; // Hapus blob
+            project.mediaPreview = null; 
           }
         }
+        // Hapus file mentah dari JSON
+        delete project.pendingMediaFile; 
       }
+      
+      // Hapus data mentah dari JSON
+      delete dataToUpload.pendingImageFile;
+      delete dataToUpload.pendingReadmeFile;
       
       // 2. Upload Master JSON
       const masterCID = await uploadJsonToApi(dataToUpload);
@@ -476,9 +483,15 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   // --- Cek Perubahan ---
   const hasUnpublishedChanges = useMemo(() => {
+    // Jangan bandingkan jika salah satu belum terdefinisi
     if (!profile || !(window as any).__onChainProfile) return false;
-    // Perbandingan sederhana. Untuk perbandingan 'deep', kita perlu library.
-    return JSON.stringify(profile) !== JSON.stringify((window as any).__onChainProfile);
+    
+    // Bandingkan draf saat ini dengan data on-chain yang disimpan di window
+    const draftJson = JSON.stringify(profile);
+    const onChainJson = JSON.stringify((window as any).__onChainProfile);
+    
+    return draftJson !== onChainJson;
+    
   }, [profile]);
 
   const addExtension = (repoUrl: string) => {
@@ -500,13 +513,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     profile, // Ini adalah 'draftProfile'
     login,
     logout,
-    saveDraft, // Ganti 'saveProfile' dengan 'saveDraft'
-    saveProfile: saveDraft, // Alias untuk kompatibilitas
+    saveDraft, 
     activeAnimation, 
     setActiveAnimation,
     extensions,
     addExtension,
-    isHydrated: !isLoading && !isProfileLoading && !!profile,
+    isHydrated: !isLoading && !isProfileLoading, // Definisikan isHydrated
     isPublishing,
     publishChangesToOnChain,
     hasUnpublishedChanges, // Kirim status ini ke UI
