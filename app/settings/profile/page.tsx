@@ -44,9 +44,13 @@ export default function ProfileSettingsPage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const readmeInputRef = useRef<HTMLInputElement>(null);
 
+  const isInitialLoadDone = useRef(false);
+
   // --- 1. Muat data dari Global ke Lokal saat komponen dimuat ---
   useEffect(() => {
-    if (profile) {
+    // Hanya muat data ke form JIKA 'profile' ada
+    // dan JIKA initial load BELUM selesai
+    if (profile && !isInitialLoadDone.current) { 
       setName(profile.name || '');
       setBio(profile.bio || '');
       setGithub(profile.github || '');
@@ -54,8 +58,12 @@ export default function ProfileSettingsPage() {
       setProfileImagePreview(resolveIpfsUrl(profile.imageUrl) || "/profilgue.png");
       // @ts-ignore
       setReadmeFileName(profile.readmeName || null);
+      
+      // --- 3. SET BENDERA (FLAG) ---
+      // Tandai bahwa pemuatan awal selesai
+      isInitialLoadDone.current = true;
     }
-  }, [profile, isHydrated]); // Jalankan saat data global siap
+  }, [profile]);
 
   // --- 2. Buat Draf Debounced ---
   const debouncedDraft = useDebounce({
@@ -69,13 +77,15 @@ export default function ProfileSettingsPage() {
 
   // --- 3. Auto-Save ke Global State ---
   useEffect(() => {
-    // Jangan simpan jika drafnya adalah nilai default (saat awal muat)
-    if (!isHydrated) return;
+    // JANGAN SIMPAN jika pemuatan awal belum selesai
+    if (!isInitialLoadDone.current) {
+      return; // Lewati proses simpan
+    }
     
-    // Simpan draf ke global state (dan localStorage)
+    // Sekarang aman untuk auto-save
     saveDraft(debouncedDraft);
     
-  }, [debouncedDraft, saveDraft, isHydrated]);
+  }, [debouncedDraft, saveDraft]);
 
   // --- Handlers (Sama, tapi tidak perlu 'isSaving') ---
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {

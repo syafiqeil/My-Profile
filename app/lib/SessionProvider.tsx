@@ -128,9 +128,6 @@ const DEFAULTS = {
   } as Profile
 };
 
-// Ambil gateway URL dari environment variable
-const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
-
 // --- KOMPONEN HELPER: PROFILE LOADER ---
 // Tugasnya: 1. Baca dari On-Chain. 2. Baca dari localStorage. 3. Tentukan state.
 const ProfileLoader = ({ children }: { children: ReactNode }) => {
@@ -143,7 +140,6 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
   
   const { address } = useAccount();
 
-  // 1. Baca dari Smart Contract (Data On-Chain)
   const { data: masterCID, isLoading: isReadingContract, isError, error: readContractError } = useReadContract({
     address: USER_PROFILE_CONTRACT_ADDRESS,
     abi: userProfileAbi,
@@ -154,7 +150,6 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
     },
   });
 
-  // 2. Efek untuk memuat data
   useEffect(() => {
     if (!isAuthenticated) {
       _setProfile(null);
@@ -170,42 +165,72 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Fungsi async untuk memuat data
     const loadProfileData = async () => {
       _setIsProfileLoading(true);
-      let onChainData: Profile = DEFAULTS.defaultProfile;
-      
-      // 2a. Ambil data ON-CHAIN dari IPFS
-      if (masterCID) {
-        try {
-          const res = await fetch(`https://gateway.pinata.cloud/ipfs/${masterCID}`);
-          if (res.ok) {
-            onChainData = await res.json();
-          }
-        } catch (e) {
-          console.error("Gagal mengambil data on-chain dari IPFS:", e);
-        }
-      }
+      let loadedProfile: Profile | null = null;
+      let dataSource: string = "";
 
-      // 2b. Ambil data DRAF dari localStorage
+      // 1. Cek Draf Lokal
       const localDraftJson = localStorage.getItem(`draftProfile_${address}`);
       if (localDraftJson) {
         console.log("Memuat draf lokal dari localStorage...");
-        _setProfile(JSON.parse(localDraftJson));
-      } else {
-        // Jika tidak ada draf, muat data on-chain
-        _setProfile(onChainData);
+        loadedProfile = JSON.parse(localDraftJson);
+        dataSource = "Draf Lokal";
       }
       
-      // Simpan data on-chain di state terpisah untuk perbandingan
-      (window as any).__onChainProfile = onChainData;
+      // 2. Jika tidak ada draf, coba ambil dari On-Chain (via Proxy JSON)
+      else if (masterCID) {
+        try {
+          console.log("Mencoba mengambil data on-chain dari Proxy JSON...");
+          const res = await fetch(`/api/proxy-json?cid=${masterCID}`); 
+          if (res.ok) {
+            loadedProfile = await res.json();
+            dataSource = "Proxy JSON (On-Chain)";
+          } else {
+            throw new Error(`Proxy JSON fetch gagal: status ${res.status}`);
+          }
+        } catch (e) {
+          console.warn("Gagal mengambil data dari IPFS/Proxy:", e);
+        }
+      }
+
+      // 3. Jika IPFS/Proxy gagal, coba ambil dari Cache Server (Vercel KV)
+      if (!loadedProfile) {
+        try {
+          console.log("IPFS/Proxy gagal, mencoba mengambil dari cache server (/api/user/profile)...");
+          const res = await fetch('/api/user/profile');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.profile) {
+              loadedProfile = data.profile;
+              dataSource = "Cache Server (Vercel KV)";
+            }
+          }
+        } catch (e) {
+          console.error("Gagal mengambil data dari cache server:", e);
+        }
+      }
+
+      // 4. Atur State
+      if (loadedProfile) {
+        console.log(`Profil berhasil dimuat dari: ${dataSource}`);
+        _setProfile(loadedProfile);
+        
+        if (dataSource !== "Draf Lokal") {
+          (window as any).__onChainProfile = loadedProfile;
+        }
+      } else {
+        console.log("Semua sumber gagal, memuat profil default.");
+        _setProfile(DEFAULTS.defaultProfile);
+        (window as any).__onChainProfile = DEFAULTS.defaultProfile;
+      }
 
       _setIsProfileLoading(false);
     };
 
     loadProfileData();
 
-  }, [isAuthenticated, masterCID, isReadingContract, isError, readContractError, address, _setProfile, _setIsProfileLoading]);
+  }, [isAuthenticated, masterCID, isReadingContract, isError, address, _setProfile, _setIsProfileLoading]); // 'readContractError' dihapus dari deps array karena sudah dicek di atas
 
   return <>{children}</>;
 };
