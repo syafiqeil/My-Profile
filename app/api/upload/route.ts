@@ -8,7 +8,6 @@ import { cookies } from 'next/headers';
 import { sessionOptions } from '@/app/lib/session';
 
 // Ambil kunci rahasia dari .env.local
-// Pastikan nama ini SAMA PERSIS dengan yang ada di file .env.local Anda
 const PINATA_API_KEY = process.env.PINATA_API_KEY;
 const PINATA_API_SECRET = process.env.PINATA_API_SECRET;
 
@@ -18,8 +17,6 @@ if (!PINATA_API_KEY || !PINATA_API_SECRET) {
 
 export async function POST(request: NextRequest) {
   // 1. Verifikasi Sesi Pengguna
-  // Kita tambahkan ini agar HANYA pengguna yang sudah login
-  // yang dapat menggunakan endpoint upload Anda.
   const session = await getIronSession(await cookies(), sessionOptions);
   if (!session.address) {
     return NextResponse.json({ error: 'Tidak terotentikasi' }, { status: 401 });
@@ -42,7 +39,6 @@ export async function POST(request: NextRequest) {
     contentType: file.type,
   });
 
-  // Tambahkan metadata (opsional tapi bagus)
   pinataFormData.append('pinataMetadata', JSON.stringify({
     name: `Profil Dasbor - ${file.name}`,
     keyvalues: {

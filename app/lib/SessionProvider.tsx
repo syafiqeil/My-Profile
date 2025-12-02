@@ -404,47 +404,50 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     if (!profile || !address) return alert("Profil belum dimuat.");
     
     setIsPublishing(true);
-    let dataToUpload = { ...profile }; 
+    let dataToUpload = JSON.parse(JSON.stringify(profile)); // Deep copy
 
+    // --- FUNGSI HELPER BARU: Konversi data:url ke File ---
+    const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File | null> => {
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        return new File([blob], filename, { type: blob.type });
+      } catch (e) {
+        console.error("Gagal konversi data:url ke file:", e);
+        return null;
+      }
+    };
+    
     try {
-      dataToUpload = JSON.parse(JSON.stringify(profile));
-
-      const blobUrlToFile = async (blobUrl: string): Promise<File | null> => {
-        try {
-          const response = await fetch(blobUrl);
-          const blob = await response.blob();
-          return new File([blob], "upload", { type: blob.type });
-        } catch (e) { return null; }
-      };
-
-      // Upload Foto Profil (jika blob)
-      if (dataToUpload.imageUrl && dataToUpload.imageUrl.startsWith('blob:')) {
-        const file = await blobUrlToFile(dataToUpload.imageUrl);
+      // Upload Foto Profil (jika data:url)
+      if (dataToUpload.imageUrl && dataToUpload.imageUrl.startsWith('data:')) {
+        const file = await dataUrlToFile(dataToUpload.imageUrl, "profile-image");
         if(file) dataToUpload.imageUrl = `ipfs://${await uploadFileToApi(file)}`;
       }
 
-      // Upload Readme (jika blob)
-      if (dataToUpload.readmeUrl && dataToUpload.readmeUrl.startsWith('blob:')) {
-        const file = await blobUrlToFile(dataToUpload.readmeUrl);
+      // Upload Readme (jika data:url)
+      if (dataToUpload.readmeUrl && dataToUpload.readmeUrl.startsWith('data:')) {
+        const file = await dataUrlToFile(dataToUpload.readmeUrl, dataToUpload.readmeName || "README.md");
         if(file) dataToUpload.readmeUrl = `ipfs://${await uploadFileToApi(file)}`;
       }
-      
-      // Upload Media Proyek (jika blob)
+
+      // Upload Media Proyek (jika data:url)
       for (const project of dataToUpload.projects) {
-        if (project.mediaPreview && project.mediaPreview.startsWith('blob:')) {
-          const file = await blobUrlToFile(project.mediaPreview);
+        if (project.mediaPreview && project.mediaPreview.startsWith('data:')) {
+          const file = await dataUrlToFile(project.mediaPreview, project.name || "project-media");
           if (file) {
             project.mediaIpfsUrl = `ipfs://${await uploadFileToApi(file)}`;
-            project.mediaPreview = null; 
+            project.mediaPreview = null; // Hapus data:url yang besar
           }
         }
-        // Hapus file mentah dari JSON
-        delete project.pendingMediaFile; 
       }
       
-      // Hapus data mentah dari JSON
+      // Hapus data 'pending' (jika ada) sebelum upload JSON
       delete dataToUpload.pendingImageFile;
       delete dataToUpload.pendingReadmeFile;
+      for (const project of dataToUpload.projects) {
+        delete project.pendingMediaFile;
+      }
       
       // 2. Upload Master JSON
       const masterCID = await uploadJsonToApi(dataToUpload);
@@ -466,9 +469,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       });
 
       // 5. Perbarui state React & Hapus Draf
-      setProfile(dataToUpload); // Atur state ke data yang sudah bersih (tanpa blob)
-      localStorage.removeItem(`draftProfile_${address}`); // Hapus draf
-      (window as any).__onChainProfile = dataToUpload; // Perbarui data on-chain
+      setProfile(dataToUpload); 
+      localStorage.removeItem(`draftProfile_${address}`);
+      (window as any).__onChainProfile = dataToUpload;
 
       alert("Sukses! Perubahan Anda telah dipublikasikan ke on-chain.");
 
@@ -478,7 +481,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsPublishing(false);
     }
-
   }, [profile, address, writeContractAsync]);
 
   // --- Cek Perubahan ---

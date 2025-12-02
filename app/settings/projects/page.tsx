@@ -6,7 +6,6 @@ import React, { useState, useRef, ChangeEvent, FormEvent, useEffect } from 'reac
 import { useAnimationStore, Project } from '@/app/lib/useAnimationStore'; 
 import { resolveIpfsUrl } from '@/app/lib/utils';
 
-// ... (Komponen Ikon tetap sama) ...
 const PlusIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
 );
@@ -29,7 +28,7 @@ const XIcon = () => (
 export default function ProjectsSettingsPage() {
   const { profile, saveDraft, isHydrated } = useAnimationStore();
   const projects = profile?.projects || [];
-  
+
   const setProjects = (newProjects: Project[] | ((prev: Project[]) => Project[])) => {
     let finalProjects: Project[];
     if (typeof newProjects === 'function') {
@@ -37,7 +36,7 @@ export default function ProjectsSettingsPage() {
     } else {
       finalProjects = newProjects;
     }
-    saveDraft({ projects: finalProjects });
+    saveDraft({ projects: finalProjects }); // Panggil 'saveDraft'
   };
   
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,7 +47,7 @@ export default function ProjectsSettingsPage() {
   const [currentTag, setCurrentTag] = useState('');
   const [projectUrl, setProjectUrl] = useState('');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
-
+  const isInitialLoadDone = useRef(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -66,14 +65,17 @@ export default function ProjectsSettingsPage() {
   const handleMediaChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
-    if (mediaPreview && mediaPreview.startsWith('blob:')) {
-      URL.revokeObjectURL(mediaPreview);
-    }
-
+    // (Hapus cleanup blob:url)
+    
     if (file) {
       if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-        setMediaPreview(URL.createObjectURL(file));
-        setMediaFile(file); 
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          // Simpan sebagai Base64 (data:url)
+          setMediaPreview(reader.result as string);
+          setMediaFile(file); // Simpan file mentah untuk upload
+        };
+        reader.readAsDataURL(file); // Baca sebagai Data URL
       } else {
         alert("Silakan pilih file gambar atau video.");
       }
@@ -98,42 +100,33 @@ export default function ProjectsSettingsPage() {
     setEditingId(null);
     setName('');
     setDescription('');
-    if (mediaPreview && mediaPreview.startsWith('blob:')) {
-      URL.revokeObjectURL(mediaPreview);
-    }
     setMediaPreview(null);
     setTags([]);
     setCurrentTag('');
     setProjectUrl('');
-    setMediaFile(null);
+    setMediaFile(null); 
     if (mediaInputRef.current) mediaInputRef.current.value = "";
   };
 
   const handleSaveProject = (e: FormEvent) => {
     e.preventDefault();
     if (!name) return alert("Nama proyek tidak boleh kosong.");
-
+    
     const existingProject = editingId ? projects.find(p => p.id === editingId) : null;
     
-    // Dapatkan URL blob yang ada (jika ada) untuk media
-    let existingMediaPreview = existingProject?.mediaPreview || null;
-    if (!mediaFile && existingProject?.mediaIpfsUrl) {
-      existingMediaPreview = resolveIpfsUrl(existingProject.mediaIpfsUrl);
-    }
-
     const newProject: Project = {
       id: editingId || `proj_${Date.now()}`,
       name,
       description,
-      // Gunakan media baru JIKA ada, jika tidak, pertahankan media lama
-      mediaPreview: mediaFile ? mediaPreview : existingMediaPreview,
+      mediaPreview, // Ini sekarang data:url
       tags,
       projectUrl,
       isFeatured: existingProject?.isFeatured || false,
-      // Tautkan file mentah HANYA jika file baru dipilih
-      pendingMediaFile: mediaFile || null,
-      // Pertahankan IPFS URL lama JIKA tidak ada file baru
-      mediaIpfsUrl: mediaFile ? null : (existingProject?.mediaIpfsUrl || null)
+      
+      // @ts-ignore
+      pendingMediaFile: mediaFile, // Simpan file mentah
+      // @ts-ignore
+      mediaIpfsUrl: existingProject?.mediaIpfsUrl || null
     };
 
     if (editingId) {
@@ -143,8 +136,7 @@ export default function ProjectsSettingsPage() {
     }
     
     resetForm();
-    // Komentar ini sudah tidak relevan
-    // alert("Proyek disimpan (secara lokal).");
+    alert("Proyek disimpan (secara lokal).");
   };
 
   const handleEdit = (project: Project) => {

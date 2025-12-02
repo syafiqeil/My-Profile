@@ -90,23 +90,36 @@ export default function ProfileSettingsPage() {
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      if (profileImagePreview && profileImagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(profileImagePreview);
-      }
-      setProfileImageFile(file);
-      setProfileImagePreview(URL.createObjectURL(file)); 
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Simpan sebagai Base64 (data:url) 
+        setProfileImagePreview(reader.result as string);
+        setProfileImageFile(file); // Kita masih simpan file untuk upload
+      };
+      reader.readAsDataURL(file); // Baca sebagai Data URL
     }
   };
   const handleReadmeChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && (file.name.endsWith('.md') || file.type === 'text/markdown')) {
-      setReadmeFile(file);
-      setReadmeFileName(file.name); 
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReadmeFile(file); 
+        setReadmeFileName(file.name);
+        // Perbarui draf dengan URL data
+        saveDraft({ 
+          readmeUrl: reader.result as string, 
+          readmeName: file.name 
+        });
+      };
+      reader.readAsDataURL(file); // Baca sebagai Data URL
     }
   };
   const handleRemoveReadme = () => {
     setReadmeFile(null);
-    setReadmeFileName(null); 
+    setReadmeFileName(null);
+    // Kosongkan URL di draf
+    saveDraft({ readmeUrl: null, readmeName: null });
     if(readmeInputRef.current) readmeInputRef.current.value = ""; 
   };
   const handleImport = () => {

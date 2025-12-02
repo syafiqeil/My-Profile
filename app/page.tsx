@@ -27,7 +27,7 @@ export default function Home() {
         <div className="text-white text-2xl font-bold mb-4">Selamat Datang!</div>
         <p className="text-zinc-400 mb-6">Profil Anda belum diatur. Silakan ke halaman pengaturan.</p>
         <Link 
-          href="/settings"
+          href="/settings/profile"
           className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
         >
           Buka Pengaturan
