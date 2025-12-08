@@ -170,29 +170,15 @@ const ProjectCard = () => {
 
 // --- Komponen Versi Statis (Fallback) ---
 const StaticProjectCard = () => (
-  <div className="rounded-xl bg-white p-6 shadow-sm md:row-span-1">
-    <div className="flex items-center gap-3 mb-4">
+  <div className="rounded-xl bg-white p-6 shadow-sm md:row-span-1 flex flex-col">
+    <div className="flex items-center gap-3 flex-shrink-0">
       <ProjectIcon />
       <h2 className="text-xl font-semibold text-zinc-900">
         What I built
       </h2>
     </div>
-    <div className="rounded-lg border border-zinc-200 p-4">
-      <h3 className="font-semibold text-zinc-800">
-        Dasbor Portofolio Saya
-      </h3>
-      <p className="text-sm text-zinc-500 mt-1">
-        Membangun ulang situs pribadi saya dengan tata letak dasbor baru
-        menggunakan Next.js dan Tailwind CSS.
-      </p>
-      <div className="mt-3 flex gap-2">
-        <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-800">
-          Next.js
-        </span>
-        <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
-          Tailwind
-        </span>
-      </div>
+    <div className="flex-1 flex items-center justify-center">
+      <p className="text-sm text-zinc-500">Silahkan connect dan login untuk melihat atau mengatur profil Anda.</p>
     </div>
   </div>
 );

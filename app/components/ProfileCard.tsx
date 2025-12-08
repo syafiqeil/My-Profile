@@ -161,8 +161,6 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
         return <WalkerBirdAnimation />;
       case 'orbs':
         return <OrbsAnimation />;
-      // Jika 'activeAnimation' adalah nama ekstensi,
-      // kita bisa tampilkan placeholder atau memuatnya secara dinamis nanti.
       default:
         return (
           <div className="flex items-center justify-center h-full text-white/50">
@@ -185,7 +183,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
     }
 
     if (!isConnected) {
-      // 1. Belum konek wallet -> Tampilkan ConnectButton
+      // 1. Belum konek wallet (Tampilkan ConnectButton)
       return (
         <ConnectButton.Custom>
           {({ openConnectModal, mounted }) => (
@@ -202,10 +200,10 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
     }
 
     if (!isAuthenticated) {
-      // 2. Sudah konek, tapi belum login -> Tampilkan tombol Login (SIWE)
+      // 2. Sudah konek, tapi belum login (Tampilkan tombol Login (SIWE))
       return (
         <button
-          onClick={login} // Panggil fungsi login dari hook
+          onClick={login} 
           className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-white/40"
         >
           Login (Sign)
@@ -213,7 +211,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
       );
     }
 
-    // 3. Sudah konek dan sudah login -> Tampilkan Settings
+    // 3. Sudah konek dan sudah login (Tampilkan Settings)
     return (
       <Link
         href="/settings/profile"
@@ -225,7 +223,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
     );
   };
 
-  const displayImageUrl = resolveIpfsUrl(profile?.imageUrl) || "/profilgue.png";
+  const displayImageUrl = resolveIpfsUrl(profile?.imageUrl) || "/profile.jpeg";
 
   const githubUrl = profile?.github 
     ? `https://github.com/${profile.github}` 
@@ -281,6 +279,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
           <img
             className="relative -mt-12 mb-4 h-24 w-24 rounded-full object-cover"
             src={displayImageUrl} 
+            alt="//www.flaticon.com/authors/luch-phou"
             width={96}
             height={96}
           />
@@ -292,7 +291,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
             </h1>
             <p className="text-base leading-relaxed text-zinc-600">
               {/* Gunakan 'bio' dari profil, atau default jika belum login */}
-              {profile ? profile.bio : "Silakan connect dan login untuk melihat atau mengatur profil Anda."}
+              {profile ? profile.bio : "Silahkan connect dan login untuk melihat atau mengatur profil Anda."}
             </p>
           </div>
          

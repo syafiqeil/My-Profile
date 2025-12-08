@@ -12,7 +12,7 @@ import { useState, useEffect, ReactNode } from 'react';
 export const Web3Provider = ({ children }: { children: ReactNode }) => {
   
   // 1. Inisialisasi state secara "malas" (lazy initialization)
-  // Fungsi di dalam useState() dijamin hanya berjalan di KLIEN.
+  // Fungsi di dalam useState() dijamin hanya berjalan di klien.
   const [client] = useState(() => new QueryClient());
   const [config] = useState(() => getDefaultConfig({
     appName: "Syafiq's Dashboard dApp",
@@ -21,8 +21,8 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
     ssr: false, 
   }));
 
-  // 2. Jaga (Guard) untuk Mencegah Hydration Mismatch
-  // Ini memastikan kita tidak me-render apapun di server,
+  // 2. Guard untuk Mencegah Hydration Mismatch
+  // Ini memastikan tidak me-render apapun di server,
   // dan hanya me-render di klien setelah 'mounted'.
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {

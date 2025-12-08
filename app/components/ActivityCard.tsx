@@ -134,19 +134,19 @@ const StaticActivityCard = () => (
       <div className="rounded-lg border border-zinc-200 p-4">
         <h3 className="font-semibold text-zinc-800">Blog</h3>
         <p className="text-sm text-zinc-500 mt-1">
-          Belum ada tulisan. Segera hadir!
+          Silahkan connect dan login untuk melihat atau mengatur profil Anda.
         </p>
       </div>
       <div className="rounded-lg border border-zinc-200 p-4">
         <h3 className="font-semibold text-zinc-800">Sertifikat</h3>
         <p className="text-sm text-zinc-500 mt-1">
-          Belum ada sertifikat untuk ditampilkan.
+          Silahkan connect dan login untuk melihat atau mengatur profil Anda.
         </p>
       </div>
       <div className="rounded-lg border border-zinc-200 p-4">
         <h3 className="font-semibold text-zinc-800">Kontak</h3>
         <p className="text-sm text-zinc-500 mt-1">
-          Kontak belum diatur.
+          Silahkan connect dan login untuk melihat atau mengatur profil Anda.
         </p>
       </div>
     </div>

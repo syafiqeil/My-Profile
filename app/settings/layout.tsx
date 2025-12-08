@@ -71,7 +71,7 @@ export default function SettingsLayout({
   };
 
   return (
-    <main className="flex min-h-screen w-full flex-col bg-neutral-100 p-4 pt-8 md:p-8">
+    <main className="flex min-h-screen w-full flex-col bg-neutral-100 p-4 pt-4 md:p-4">
       
       <div className="mb-4 max-w-5xl mx-auto w-full">
         <Link
