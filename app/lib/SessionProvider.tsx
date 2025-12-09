@@ -21,6 +21,7 @@ import {
 } from 'wagmi'; 
 import { SiweMessage } from 'siwe';
 import { resolveIpfsUrl } from './utils';
+import { Project } from 'next/dist/build/swc/types';
 
 // --- ALAMAT & ABI KONTRAK ---
 const USER_PROFILE_CONTRACT_ADDRESS = '0x8c09c8db25b81e5a9e1462f9bdc83dfcc7d7bf99';
@@ -69,22 +70,47 @@ const userProfileAbi = [
 
 // --- Tipe Data ---
 export interface ActivityItem { id: string; title: string; url: string; }
-export interface Project {
-  id: string; name: string; description: string;
-  mediaPreview: string | null; tags: string[]; isFeatured: boolean;
-  projectUrl: string; mediaIpfsUrl?: string | null; 
-  pendingMediaFile?: File | null; 
+export interface SocialLink {
+  id: string;
+  platform: string; 
+  url: string;
 }
+
+export interface BlogPost {
+  id: string;
+  title: string;
+  description: string;
+  coverImage?: string | null; // URL IPFS atau Data URL
+  pendingCoverFile?: File | null; // Untuk upload
+  content?: string; // Full text nanti
+}
+
+export interface Certificate {
+  id: string;
+  title: string;
+  imageUrl?: string | null;
+  pendingImageFile?: File | null;
+  credentialUrl?: string; // Link verifikasi 
+}
+
+// 2. Perbarui Interface Profile
 export interface Profile {
-  name: string; bio: string; github: string; animation: string;
-  projects: Project[]; 
+  name: string;
+  bio: string;
+  github: string;
+  animation: string;
+  projects: Project[];
   activity: {
-    blogPosts: ActivityItem[];
-    certificates: ActivityItem[];
-    contactEmail: string;
+    blogPosts: BlogPost[];      
+    certificates: Certificate[]; 
+    socialLinks: SocialLink[];   
+    contactEmail?: string;      
   };
-  imageUrl?: string | null; readmeUrl?: string | null; readmeName?: string | null;
-  pendingImageFile?: File | null; pendingReadmeFile?: File | null;
+  imageUrl?: string | null;
+  readmeUrl?: string | null;
+  readmeName?: string | null;
+  pendingImageFile?: File | null;
+  pendingReadmeFile?: File | null;
 }
 export interface AnimationExtension { id: string; name: string; }
 
@@ -114,7 +140,7 @@ interface SessionContextType {
   // Fungsi internal
   _setProfile: (profile: Profile | null) => void;
   _setIsProfileLoading: (loading: boolean) => void;
-  isHydrated: boolean; // <--- Tambahkan ini ke tipe
+  isHydrated: boolean; 
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -124,13 +150,21 @@ const DEFAULTS = {
   animation: 'dino',
   extensions: [] as AnimationExtension[],
   defaultProfile: {
-    name: '', bio: '', github: '', animation: 'dino',
+    name: '',
+    bio: '',
+    github: '',
+    animation: 'dino',
     projects: [],
-    activity: { blogPosts: [], certificates: [], contactEmail: '' },
+    activity: {
+      blogPosts: [],
+      certificates: [],
+      socialLinks: [],
+      contactEmail: '',
+    },
   } as Profile
 };
 
-// --- KOMPONEN HELPER: PROFILE LOADER (LOGIKA DIPERBARUI) ---
+// --- KOMPONEN HELPER: PROFILE LOADER ---
 const ProfileLoader = ({ children }: { children: ReactNode }) => {
   const { 
     _setProfile, 
@@ -419,19 +453,40 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     };
     
     try {
-      // Upload Foto Profil (jika data:url)
       if (dataToUpload.imageUrl && dataToUpload.imageUrl.startsWith('data:')) {
         const file = await dataUrlToFile(dataToUpload.imageUrl, "profile-image");
         if(file) dataToUpload.imageUrl = `ipfs://${await uploadFileToApi(file)}`;
       }
 
-      // Upload Readme (jika data:url)
       if (dataToUpload.readmeUrl && dataToUpload.readmeUrl.startsWith('data:')) {
         const file = await dataUrlToFile(dataToUpload.readmeUrl, dataToUpload.readmeName || "README.md");
         if(file) dataToUpload.readmeUrl = `ipfs://${await uploadFileToApi(file)}`;
       }
 
-      // Upload Media Proyek (jika data:url)
+      if (dataToUpload.activity?.blogPosts) {
+        for (const post of dataToUpload.activity.blogPosts) {
+          if (post.coverImage && post.coverImage.startsWith('data:')) {
+            const file = await dataUrlToFile(post.coverImage, post.title || "blog-cover");
+            if (file) {
+              post.coverImage = `ipfs://${await uploadFileToApi(file)}`;
+            }
+          }
+          delete post.pendingCoverFile; // Bersihkan file mentah
+        }
+      }
+
+      if (dataToUpload.activity?.certificates) {
+        for (const cert of dataToUpload.activity.certificates) {
+          if (cert.imageUrl && cert.imageUrl.startsWith('data:')) {
+            const file = await dataUrlToFile(cert.imageUrl, cert.title || "certificate-img");
+            if (file) {
+              cert.imageUrl = `ipfs://${await uploadFileToApi(file)}`;
+            }
+          }
+          delete cert.pendingImageFile;
+        }
+      }
+
       for (const project of dataToUpload.projects) {
         if (project.mediaPreview && project.mediaPreview.startsWith('data:')) {
           const file = await dataUrlToFile(project.mediaPreview, project.name || "project-media");
@@ -442,7 +497,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      // Hapus data 'pending' (jika ada) sebelum upload JSON
       delete dataToUpload.pendingImageFile;
       delete dataToUpload.pendingReadmeFile;
       for (const project of dataToUpload.projects) {
