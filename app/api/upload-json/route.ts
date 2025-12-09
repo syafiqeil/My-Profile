@@ -10,14 +10,14 @@ const PINATA_API_KEY = process.env.PINATA_API_KEY;
 const PINATA_API_SECRET = process.env.PINATA_API_SECRET;
 
 if (!PINATA_API_KEY || !PINATA_API_SECRET) {
-  console.error("Kunci API Pinata belum diatur di .env.local");
+  console.error("Pinata API keys are not set in .env.local");
 }
 
 export async function POST(request: NextRequest) {
   // 1. Verifikasi Kunci API (Pengecekan runtime)
   if (!PINATA_API_KEY || !PINATA_API_SECRET) {
     return NextResponse.json(
-      { error: 'Kunci API Pinata belum dikonfigurasi di server.' }, 
+      { error: 'Pinata API keys are not configured on the server.' }, 
       { status: 500 }
     );
   }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   // 2. Verifikasi Sesi Pengguna
   const session = await getIronSession(await cookies(), sessionOptions);
   if (!session.address) {
-    return NextResponse.json({ error: 'Tidak terotentikasi' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
   }
 
   try {
@@ -33,14 +33,14 @@ export async function POST(request: NextRequest) {
     const jsonData = await request.json();
 
     if (!jsonData) {
-      return NextResponse.json({ error: 'Data JSON tidak ditemukan' }, { status: 400 });
+      return NextResponse.json({ error: 'JSON data not found' }, { status: 400 });
     }
 
     // 4. Buat wrapper yang diminta oleh Pinata
     const pinataData = JSON.stringify({
       pinataContent: jsonData,
       pinataMetadata: {
-        name: `Dasbor JSON - ${session.address}`,
+        name: `Dashboard JSON - ${session.address}`,
         keyvalues: {
           userAddress: session.address
         }
@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error("Gagal upload JSON ke Pinata:", error);
-    let errorMessage = 'Gagal mengunggah JSON.';
+    console.error("Failed to upload JSON to Pinata:", error);
+    let errorMessage = 'Failed to upload JSON.';
     // Jika error datang dari Axios (Pinata)
     if (axios.isAxiosError(error) && error.response) {
       errorMessage = `Error dari Pinata (${error.response.status}): ${JSON.stringify(error.response.data)}`;

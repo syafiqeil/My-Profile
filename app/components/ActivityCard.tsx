@@ -72,7 +72,7 @@ const ActivityCard = () => {
             </div>
           ) : (
             <p className="text-sm text-zinc-500 mt-1">
-              Belum ada tulisan.
+              No posts yet.
             </p>
           )}
         </div>
@@ -81,7 +81,7 @@ const ActivityCard = () => {
         <div className="rounded-lg border border-zinc-200 p-4">
           <div className="flex items-center gap-2 mb-2">
             <AwardIcon />
-            <h3 className="font-semibold text-zinc-800">Sertifikat</h3>
+            <h3 className="font-semibold text-zinc-800">Certificates</h3>
           </div>
           {hasCerts ? (
             <div className="flex flex-col gap-1">
@@ -91,7 +91,7 @@ const ActivityCard = () => {
             </div>
           ) : (
             <p className="text-sm text-zinc-500 mt-1">
-              Belum ada sertifikat untuk ditampilkan.
+              No certificates to display yet.
             </p>
           )}
         </div>
@@ -100,7 +100,7 @@ const ActivityCard = () => {
         <div className="rounded-lg border border-zinc-200 p-4">
           <div className="flex items-center gap-2 mb-2">
             <MailIcon />
-            <h3 className="font-semibold text-zinc-800">Kontak</h3>
+            <h3 className="font-semibold text-zinc-800">Contact</h3>
           </div>
           {hasContact ? (
             <a 
@@ -112,7 +112,7 @@ const ActivityCard = () => {
             </a>
           ) : (
             <p className="text-sm text-zinc-500 mt-1">
-              Kontak belum diatur.
+              Contact not set yet.
             </p>
           )}
         </div>
@@ -134,19 +134,19 @@ const StaticActivityCard = () => (
       <div className="rounded-lg border border-zinc-200 p-4">
         <h3 className="font-semibold text-zinc-800">Blog</h3>
         <p className="text-sm text-zinc-500 mt-1">
-          Silahkan connect dan login untuk melihat atau mengatur profil Anda.
+          Please connect and log in to view or update your profile.
         </p>
       </div>
       <div className="rounded-lg border border-zinc-200 p-4">
-        <h3 className="font-semibold text-zinc-800">Sertifikat</h3>
+        <h3 className="font-semibold text-zinc-800">Certificates</h3>
         <p className="text-sm text-zinc-500 mt-1">
-          Silahkan connect dan login untuk melihat atau mengatur profil Anda.
+          Please connect and log in to view or update your profile.
         </p>
       </div>
       <div className="rounded-lg border border-zinc-200 p-4">
-        <h3 className="font-semibold text-zinc-800">Kontak</h3>
+        <h3 className="font-semibold text-zinc-800">Contact</h3>
         <p className="text-sm text-zinc-500 mt-1">
-          Silahkan connect dan login untuk melihat atau mengatur profil Anda.
+          Please connect and log in to view or update your profile.
         </p>
       </div>
     </div>

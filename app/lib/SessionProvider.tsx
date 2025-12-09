@@ -161,7 +161,7 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
       // --- STEP 1: Selalu coba ambil data ON-CHAIN (untuk perbandingan) ---
       if (masterCID) {
         try {
-          console.log("Memuat data on-chain (Direct IPFS)...");
+          console.log("Loading on-chain data (Direct IPFS)...");
           
           // --- PERUBAHAN DI SINI ---
           // URL diubah dari proxy lokal ke gateway publik
@@ -173,17 +173,17 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
             onChainProfile = await res.json();
           } else {
              // Ubah pesan error agar lebih jelas
-            throw new Error(`Direct IPFS fetch gagal: status ${res.status}`);
+            throw new Error(`Direct IPFS fetch failed: status ${res.status}`);
           }
         } catch (e) {
-          console.warn("Gagal mengambil data dari IPFS:", e);
+          console.warn("Failed to fetch data from IPFS:", e);
         }
       }
       
       // Jika IPFS gagal, coba ambil dari Cache Server (Vercel KV)
       if (!onChainProfile) {
         try {
-          console.log("IPFS gagal, mencoba cache server (/api/user/profile)...");
+          console.log("IPFS failed, trying cache server (/api/user/profile)...");
           const res = await fetch('/api/user/profile');
           if (res.ok) {
             const data = await res.json();
@@ -192,13 +192,13 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
             }
           }
         } catch (e) {
-          console.error("Gagal mengambil data dari cache server:", e);
+          console.error("Failed to fetch data from cache server:", e);
         }
       }
 
       // Jika semua gagal, data on-chain dianggap default
       if (!onChainProfile) {
-        console.log("Tidak ada data on-chain ditemukan, menggunakan default.");
+        console.log("No on-chain data found, using default.");
         onChainProfile = DEFAULTS.defaultProfile;
       }
       // SELALU simpan data on-chain untuk perbandingan
@@ -207,11 +207,11 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
       // --- STEP 2: Tentukan apa yang harus ditampilkan di DRAF ---
       const localDraftJson = localStorage.getItem(`draftProfile_${address}`);
       if (localDraftJson) {
-        console.log("Memuat draf lokal dari localStorage...");
+        console.log("Loading local draft from localStorage...");
         loadedDraft = JSON.parse(localDraftJson);
       } else {
         // Jika tidak ada draf lokal, gunakan data on-chain sebagai draf awal
-        console.log("Tidak ada draf lokal, menggunakan data on-chain sebagai draf.");
+        console.log("No local draft, using on-chain data as draft.");
         loadedDraft = onChainProfile;
       }
 
@@ -224,7 +224,7 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
     if (isAuthenticated && !isReadingContract && !isPublishing) {
       if (isError) {
         // Error saat baca contract, tidak bisa lanjut
-        console.error("Gagal membaca smart contract:", readContractError);
+        console.error("Failed to read smart contract:", readContractError);
         (window as any).__onChainProfile = DEFAULTS.defaultProfile; // Set default
         _setProfile(DEFAULTS.defaultProfile); // Set default
         _setIsProfileLoading(false);
@@ -315,7 +315,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       const nonce = await nonceRes.text();
       const message = new SiweMessage({
         domain: window.location.host, address,
-        statement: 'Masuk ke Dasbor Syafiq',
+        statement: 'Sign in to Syafiq Dashboard',
         uri: window.location.origin, version: '1',
         chainId, nonce,
       });
@@ -325,12 +325,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: message.prepareMessage(), signature }),
       });
-      if (!verifyRes.ok) throw new Error('Verifikasi gagal');
+      if (!verifyRes.ok) throw new Error('Verification failed');
       
       setIsAuthenticated(true); 
       
     } catch (error) {
-      console.error('Login gagal:', error);
+      console.error('Login failed:', error);
       setIsAuthenticated(false);
       setProfile(null);
     } finally {
@@ -348,7 +348,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     try {
       await fetch('/api/siwe/logout'); 
     } catch (error) {
-      console.error("Gagal clear session di server:", error);
+      console.error("Failed to clear session on server:", error);
     }
     disconnect();
   }, [disconnect, address]);
@@ -379,7 +379,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Server error /api/upload:", errorText);
-      throw new Error(`Gagal mengunggah file (${response.status}). Server: ${errorText}`);
+      throw new Error(`Failed to upload file (${response.status}). Server: ${errorText}`);
     }
     const data = await response.json();
     return data.ipfsHash;
@@ -394,14 +394,14 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Server error /api/upload-json:", errorText);
-      throw new Error(`Gagal mengunggah JSON (${response.status}). Server: ${errorText}`);
+      throw new Error(`Failed to upload JSON (${response.status}). Server: ${errorText}`);
     }
     const result = await response.json();
     return result.ipfsHash;
   };
 
   const publishChangesToOnChain = useCallback(async () => {
-    if (!profile || !address) return alert("Profil belum dimuat.");
+    if (!profile || !address) return alert("Profile has not been loaded.");
     
     setIsPublishing(true);
     let dataToUpload = JSON.parse(JSON.stringify(profile)); // Deep copy
@@ -413,7 +413,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         const blob = await res.blob();
         return new File([blob], filename, { type: blob.type });
       } catch (e) {
-        console.error("Gagal konversi data:url ke file:", e);
+        console.error("Failed to convert data:url to file:", e);
         return null;
       }
     };
@@ -473,11 +473,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem(`draftProfile_${address}`);
       (window as any).__onChainProfile = dataToUpload;
 
-      alert("Sukses! Perubahan Anda telah dipublikasikan ke on-chain.");
+      alert("Success! Your changes have been published on-chain.");
 
     } catch (error) {
-      console.error("Gagal memublikasikan:", error);
-      alert(`Gagal memublikasikan: ${(error as Error).message}`);
+      console.error("Failed to publish:", error);
+      alert(`Failed to publish: ${(error as Error).message}`);
     } finally {
       setIsPublishing(false);
     }
@@ -499,7 +499,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const addExtension = (repoUrl: string) => {
     const newExtension: AnimationExtension = {
       id: repoUrl,
-      name: repoUrl.split('/').pop() || 'Animasi Kustom',
+      name: repoUrl.split('/').pop() || 'Custom Animation',
     };
     setExtensions((prev) => {
       const newList = [...prev, newExtension];

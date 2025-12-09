@@ -164,7 +164,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
       default:
         return (
           <div className="flex items-center justify-center h-full text-white/50">
-            <p>Ekstensi: {activeAnimation}</p>
+            <p>Extension: {activeAnimation}</p>
           </div>
         );
     }
@@ -177,7 +177,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
           disabled
           className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white transition-all"
         >
-          Memuat...
+          Loading...
         </button>
       );
     }
@@ -216,7 +216,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
       <Link
         href="/settings/profile"
         className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-all hover:bg-white/40"
-        aria-label="Pengaturan Animasi"
+          aria-label="Animation Settings"
       >
         <SettingsIcon />
       </Link>
@@ -287,11 +287,11 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
           <div className="mb-6 flex flex-col gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
               {/* Gunakan 'name' dari profil, atau default jika belum login */}
-              {profile ? profile.name : (isAuthenticated ? 'Pengguna Baru' : 'Selamat Datang')}
+              {profile ? profile.name : (isAuthenticated ? 'New User' : 'Welcome')}
             </h1>
             <p className="text-base leading-relaxed text-zinc-600">
               {/* Gunakan 'bio' dari profil, atau default jika belum login */}
-              {profile ? profile.bio : "Silahkan connect dan login untuk melihat atau mengatur profil Anda."}
+              {profile ? profile.bio : "Please connect and log in to view or update your profile."}
             </p>
           </div>
          
@@ -305,7 +305,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
               rel="noopener noreferrer"
             >
               <GithubIcon />
-              {profile?.github ? 'My Github' : 'GitHub Belum Diatur'}
+              {profile?.github ? 'My Github' : 'GitHub Not Set'}
             </a>
             <button
               type="button"

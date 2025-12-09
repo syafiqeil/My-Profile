@@ -12,14 +12,14 @@ const PINATA_API_KEY = process.env.PINATA_API_KEY;
 const PINATA_API_SECRET = process.env.PINATA_API_SECRET;
 
 if (!PINATA_API_KEY || !PINATA_API_SECRET) {
-  throw new Error("Kunci API Pinata belum diatur di .env.local");
+  throw new Error("Pinata API keys are not set in .env.local");
 }
 
 export async function POST(request: NextRequest) {
   // 1. Verifikasi Sesi Pengguna
   const session = await getIronSession(await cookies(), sessionOptions);
   if (!session.address) {
-    return NextResponse.json({ error: 'Tidak terotentikasi' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
   }
 
   // 2. Dapatkan FormData dari request frontend
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const file = requestFormData.get('file') as File;
 
   if (!file) {
-    return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
+    return NextResponse.json({ error: 'File not found' }, { status: 400 });
   }
 
   // 3. Buat FormData baru untuk dikirim ke Pinata
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   });
 
   pinataFormData.append('pinataMetadata', JSON.stringify({
-    name: `Profil Dasbor - ${file.name}`,
+    name: `Dashboard Profile - ${file.name}`,
     keyvalues: {
       userAddress: session.address // Tandai file ini milik siapa
     }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Gagal upload ke Pinata:", error);
-    return NextResponse.json({ error: 'Gagal mengunggah file.' }, { status: 500 });
+    console.error("Failed to upload to Pinata:", error);
+    return NextResponse.json({ error: 'Failed to upload file.' }, { status: 500 });
   }
 }

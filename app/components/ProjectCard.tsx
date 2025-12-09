@@ -49,7 +49,7 @@ const ProjectListItem = ({ project, onClick }: { project: Project, onClick: () =
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-zinc-900 truncate">{project.name}</p>
-        <p className="text-xs text-zinc-500 truncate">{project.description || "Tidak ada deskripsi"}</p>
+        <p className="text-xs text-zinc-500 truncate">{project.description || "No description"}</p>
       </div>
     </button>
   );
@@ -81,7 +81,7 @@ const FeaturedProjectItem = ({ project, onClick }: { project: Project, onClick: 
       {/* Konten */}
       <div className="p-4 flex-1 flex flex-col">
         <h3 className="font-semibold text-zinc-800 text-base">{project.name}</h3>
-        <p className="text-sm text-zinc-500 mt-1 flex-1">{project.description || "Tidak ada deskripsi"}</p>
+        <p className="text-sm text-zinc-500 mt-1 flex-1">{project.description || "No description"}</p>
         {/* Tags */}
         <div className="mt-3 flex flex-wrap gap-2">
           {project.tags.slice(0, 3).map(tag => (
@@ -128,7 +128,7 @@ const ProjectCard = () => {
 
         {allProjects.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-zinc-500">Belum ada proyek. Silakan tambahkan di halaman pengaturan.</p>
+        <p className="text-sm text-zinc-500">No projects yet. Please add them from the settings page.</p>
           </div>
         )}
 
@@ -147,7 +147,7 @@ const ProjectCard = () => {
         {otherProjects.length > 0 && (
           <div className="flex-1 flex flex-col min-h-0"> 
             <h3 className="text-sm font-medium text-zinc-600 mb-2 border-t pt-4 flex-shrink-0">
-              Proyek Lainnya
+              Other Projects
             </h3>
             <div className="flex-1 overflow-y-auto max-h-48 pr-2"> 
               <div className="flex flex-col divide-y divide-zinc-100">
@@ -178,7 +178,7 @@ const StaticProjectCard = () => (
       </h2>
     </div>
     <div className="flex-1 flex items-center justify-center">
-      <p className="text-sm text-zinc-500">Silahkan connect dan login untuk melihat atau mengatur profil Anda.</p>
+      <p className="text-sm text-zinc-500">Please connect and log in to view or update your profile.</p>
     </div>
   </div>
 );

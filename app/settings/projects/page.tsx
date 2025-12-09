@@ -77,7 +77,7 @@ export default function ProjectsSettingsPage() {
         };
         reader.readAsDataURL(file); // Baca sebagai Data URL
       } else {
-        alert("Silakan pilih file gambar atau video.");
+        alert("Please select an image or video file.");
       }
     }
   };
@@ -110,7 +110,7 @@ export default function ProjectsSettingsPage() {
 
   const handleSaveProject = (e: FormEvent) => {
     e.preventDefault();
-    if (!name) return alert("Nama proyek tidak boleh kosong.");
+    if (!name) return alert("Project name cannot be empty.");
     
     const existingProject = editingId ? projects.find(p => p.id === editingId) : null;
     
@@ -136,7 +136,7 @@ export default function ProjectsSettingsPage() {
     }
     
     resetForm();
-    alert("Proyek disimpan (secara lokal).");
+    alert("Project saved locally.");
   };
 
   const handleEdit = (project: Project) => {
@@ -152,7 +152,7 @@ export default function ProjectsSettingsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus proyek ini?")) {
+    if (window.confirm("Are you sure you want to delete this project?")) {
       setProjects(projects.filter(p => p.id !== id));
       // Tidak perlu panggil saveDashboard() lagi, setProjects sudah melakukannya
     }
@@ -162,7 +162,7 @@ export default function ProjectsSettingsPage() {
     const project = projects.find(p => p.id === id)!;
     
     if (!project.isFeatured && featuredProjects.length >= 3) {
-      alert("Anda hanya dapat memiliki 3 proyek unggulan.");
+      alert("You can only have 3 featured projects.");
       return;
     }
     
@@ -173,7 +173,7 @@ export default function ProjectsSettingsPage() {
   };
 
   if (!isHydrated) {
-    return <div className="text-zinc-500">Memuat data proyek...</div>;
+    return <div className="text-zinc-500">Loading project data...</div>;
   }
 
   return (
@@ -181,31 +181,31 @@ export default function ProjectsSettingsPage() {
       {/* --- Bagian 1: Form Proyek --- */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          {editingId ? "Edit Proyek" : "Tambah Proyek Baru"}
+          {editingId ? "Edit Project" : "Add New Project"}
         </h2>
         <form onSubmit={handleSaveProject} className="flex flex-col gap-4 p-4 rounded-lg border border-zinc-200">
           <div>
-            <label className="text-sm font-medium text-zinc-700">Nama Proyek</label>
+            <label className="text-sm font-medium text-zinc-700">Project Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Nama proyek Anda"
+              placeholder="Your project name"
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Deskripsi</label>
+            <label className="text-sm font-medium text-zinc-700">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Deskripsi singkat proyek..."
+              placeholder="Short project description..."
               rows={3}
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Foto/Video Proyek</label>
+            <label className="text-sm font-medium text-zinc-700">Project Photo/Video</label>
             <div className="mt-1 flex items-center gap-3">
               <div className="w-24 h-16 rounded-lg border border-zinc-200 bg-zinc-50 flex items-center justify-center overflow-hidden">
                 {mediaPreview ? (
@@ -235,12 +235,12 @@ export default function ProjectsSettingsPage() {
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Link Proyek (Situs/YouTube)</label>
+            <label className="text-sm font-medium text-zinc-700">Project Link (Website/YouTube)</label>
             <input
               type="url"
               value={projectUrl}
               onChange={(e) => setProjectUrl(e.target.value)}
-              placeholder="https://github.com/anda atau https://youtube.com/..."
+              placeholder="https://github.com/you or https://youtube.com/..."
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
@@ -260,7 +260,7 @@ export default function ProjectsSettingsPage() {
                 value={currentTag}
                 onChange={(e) => setCurrentTag(e.target.value)}
                 onKeyDown={handleTagInput}
-                placeholder="Ketik tag lalu 'Enter'"
+                placeholder="Type a tag then press Enter"
                 className="flex-1 text-sm focus:outline-none"
               />
             </div>
@@ -272,14 +272,14 @@ export default function ProjectsSettingsPage() {
                 onClick={resetForm}
                 className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-200"
               >
-                Batal
+                  Cancel
               </button>
             )}
             <button
               type="submit"
               className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
             >
-              {editingId ? "Simpan Perubahan" : "Simpan Proyek"}
+                {editingId ? "Save Changes" : "Save Project"}
             </button>
           </div>
         </form>
@@ -288,7 +288,7 @@ export default function ProjectsSettingsPage() {
       {/* --- Bagian 2: Daftar Proyek --- */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Proyek Unggulan (Maks. 3)
+          Featured Projects (Max. 3)
         </h2>
         <div className="flex flex-col gap-3">
           {featuredProjects.length > 0 ? (
@@ -302,14 +302,14 @@ export default function ProjectsSettingsPage() {
               />
             ))
           ) : (
-            <p className="text-sm text-zinc-500">Belum ada proyek unggulan. Klik ikon bintang pada proyek di bawah.</p>
+            <p className="text-sm text-zinc-500">No featured projects yet. Click the star icon on a project below.</p>
           )}
         </div>
       </section>
 
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Proyek Lainnya
+          Other Projects
         </h2>
         <div className="flex flex-col gap-3">
           {otherProjects.length > 0 ? (
@@ -323,7 +323,7 @@ export default function ProjectsSettingsPage() {
               />
             ))
           ) : (
-            <p className="text-sm text-zinc-500">Belum ada proyek yang ditambahkan.</p>
+            <p className="text-sm text-zinc-500">No projects have been added yet.</p>
           )}
         </div>
       </section>
@@ -361,7 +361,7 @@ const ProjectListItem = ({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-zinc-900 truncate">{project.name}</p>
-        <p className="text-xs text-zinc-500 truncate">{project.description || "Tidak ada deskripsi"}</p>
+        <p className="text-xs text-zinc-500 truncate">{project.description || "No description"}</p>
       </div>
       <div className="flex-shrink-0 flex items-center gap-3">
         {project.tags.slice(0, 2).map(tag => (
@@ -372,14 +372,14 @@ const ProjectListItem = ({
         <button
           onClick={() => onToggleFeatured(project.id)}
           className={`text-zinc-400 hover:text-yellow-500 ${project.isFeatured ? 'text-yellow-500' : ''}`}
-          title={project.isFeatured ? "Batal Unggulkan" : "Jadikan Unggulan"}
+        title={project.isFeatured ? "Remove Featured" : "Mark as Featured"}
         >
           <StarIcon filled={project.isFeatured} />
         </button>
-        <button onClick={() => onEdit(project)} className="text-zinc-500 hover:text-zinc-900" title="Edit">
+      <button onClick={() => onEdit(project)} className="text-zinc-500 hover:text-zinc-900" title="Edit">
           <EditIcon />
         </button>
-        <button onClick={() => onDelete(project.id)} className="text-zinc-500 hover:text-red-600" title="Hapus">
+      <button onClick={() => onDelete(project.id)} className="text-zinc-500 hover:text-red-600" title="Delete">
           <TrashIcon />
         </button>
       </div>

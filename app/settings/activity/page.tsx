@@ -67,7 +67,7 @@ export default function ActivitySettingsPage() {
 
   // --- Handlers ---
   const handleAddPost = () => {
-    if (!newPostTitle || !newPostUrl) return alert("Judul dan URL blog tidak boleh kosong.");
+    if (!newPostTitle || !newPostUrl) return alert("Blog title and URL cannot be empty.");
     setBlogPosts([...blogPosts, { id: `blog_${Date.now()}`, title: newPostTitle, url: newPostUrl }]);
     setNewPostTitle('');
     setNewPostUrl('');
@@ -77,7 +77,7 @@ export default function ActivitySettingsPage() {
   };
   
   const handleAddCert = () => {
-    if (!newCertTitle || !newCertUrl) return alert("Judul dan URL sertifikat tidak boleh kosong.");
+    if (!newCertTitle || !newCertUrl) return alert("Certificate title and URL cannot be empty.");
     setCertificates([...certificates, { id: `cert_${Date.now()}`, title: newCertTitle, url: newCertUrl }]);
     setNewCertTitle('');
     setNewCertUrl('');
@@ -87,7 +87,7 @@ export default function ActivitySettingsPage() {
   };
 
   if (!isHydrated || !hasLoaded) {
-    return <div className="text-zinc-500">Memuat pengaturan aktivitas...</div>;
+    return <div className="text-zinc-500">Loading activity settings...</div>;
   }
 
   return (
@@ -96,18 +96,18 @@ export default function ActivitySettingsPage() {
       {/* --- 1. Pengaturan Kontak --- */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Informasi Kontak
+          Contact Information
         </h2>
         <div className="flex flex-col gap-4">
           <div>
-            <label className="text-sm font-medium text-zinc-700">Email Kontak</label>
+            <label className="text-sm font-medium text-zinc-700">Contact Email</label>
             <div className="flex items-center gap-2 mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2">
               <MailIcon />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@anda.com"
+                placeholder="email@you.com"
                 className="flex-1 text-sm focus:outline-none"
               />
             </div>
@@ -118,14 +118,14 @@ export default function ActivitySettingsPage() {
       {/* --- 2. Pengaturan Blog --- */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Tulisan Blog
+          Blog Posts
         </h2>
         {/* Daftar Postingan */}
         <div className="flex flex-col gap-2 mb-4">
           {blogPosts.length > 0 ? blogPosts.map(post => (
             <ItemDisplay key={post.id} item={post} onRemove={handleRemovePost} />
           )) : (
-            <p className="text-sm text-zinc-500">Belum ada tulisan blog.</p>
+            <p className="text-sm text-zinc-500">No blog posts yet.</p>
           )}
         </div>
         {/* Form Tambah Baru */}
@@ -134,21 +134,21 @@ export default function ActivitySettingsPage() {
             type="text"
             value={newPostTitle}
             onChange={(e) => setNewPostTitle(e.target.value)}
-            placeholder="Judul Postingan"
+            placeholder="Post Title"
             className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
           />
           <input
             type="url"
             value={newPostUrl}
             onChange={(e) => setNewPostUrl(e.target.value)}
-            placeholder="https://link-ke-blog.com"
+            placeholder="https://link-to-blog.com"
             className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
           />
           <button
             onClick={handleAddPost}
             className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
           >
-            Tambah
+            Add
           </button>
         </div>
       </section>
@@ -156,14 +156,14 @@ export default function ActivitySettingsPage() {
       {/* --- 3. Pengaturan Sertifikat --- */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Sertifikat
+          Certificates
         </h2>
         {/* Daftar Sertifikat */}
         <div className="flex flex-col gap-2 mb-4">
           {certificates.length > 0 ? certificates.map(cert => (
             <ItemDisplay key={cert.id} item={cert} onRemove={handleRemoveCert} />
           )) : (
-            <p className="text-sm text-zinc-500">Belum ada sertifikat.</p>
+            <p className="text-sm text-zinc-500">No certificates yet.</p>
           )}
         </div>
         {/* Form Tambah Baru */}
@@ -172,21 +172,21 @@ export default function ActivitySettingsPage() {
             type="text"
             value={newCertTitle}
             onChange={(e) => setNewCertTitle(e.target.value)}
-            placeholder="Nama Sertifikat"
+            placeholder="Certificate Name"
             className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
           />
           <input
             type="url"
             value={newCertUrl}
             onChange={(e) => setNewCertUrl(e.target.value)}
-            placeholder="https://link-ke-sertifikat.com"
+            placeholder="https://link-to-certificate.com"
             className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
           />
           <button
             onClick={handleAddCert}
             className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
           >
-            Tambah
+            Add
           </button>
         </div>
       </section>
@@ -201,7 +201,7 @@ const ItemDisplay = ({ item, onRemove }: { item: ActivityItem, onRemove: (id: st
     <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm font-medium text-zinc-800 truncate hover:underline">
       {item.title}
     </a>
-    <button onClick={() => onRemove(item.id)} className="text-zinc-500 hover:text-red-600" title="Hapus">
+    <button onClick={() => onRemove(item.id)} className="text-zinc-500 hover:text-red-600" title="Delete">
       <TrashIcon />
     </button>
   </div>

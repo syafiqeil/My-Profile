@@ -135,7 +135,7 @@ export default function ProfileSettingsPage() {
 
   // Tampilkan loading jika data global belum siap ATAU form lokal belum terisi
   if (!isHydrated || !hasLoaded) {
-    return <div className="text-zinc-500">Memuat pengaturan profil...</div>;
+    return <div className="text-zinc-500">Loading profile settings...</div>;
   }
 
   // Gunakan 'displayImage' yang sudah ada
@@ -147,13 +147,13 @@ export default function ProfileSettingsPage() {
       {/* Bagian 1: Edit Profil */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-4">
-          Profil Publik
+          Public Profile
         </h2>
       
         <div className="flex items-center gap-4 mb-6">
           <img
             src={displayImage}
-            alt="Preview Foto Profil"
+            alt="Profile Photo Preview"
             width={80}
             height={80}
             className="rounded-full w-20 h-20 object-cover bg-zinc-100 border"
@@ -163,7 +163,7 @@ export default function ProfileSettingsPage() {
               onClick={() => imageInputRef.current?.click()}
               className="flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
             >
-              <ImageIcon /> Ganti Foto
+              <ImageIcon /> Change Photo
             </button>
             <input
               type="file"
@@ -172,18 +172,18 @@ export default function ProfileSettingsPage() {
               accept="image/*"
               className="hidden"
             />
-            <p className="text-xs text-zinc-500 mt-2">PNG, JPG, atau GIF. Ukuran 800x800px disarankan.</p>
+            <p className="text-xs text-zinc-500 mt-2">PNG, JPG, or GIF. 800x800px recommended.</p>
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
           <div>
-            <label className="text-sm font-medium text-zinc-700">Nama</label>
+            <label className="text-sm font-medium text-zinc-700">Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Nama lengkap Anda"
+              placeholder="Your full name"
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
@@ -192,18 +192,18 @@ export default function ProfileSettingsPage() {
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Ceritakan tentang diri Anda..."
+              placeholder="Tell us about yourself..."
               rows={4}
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Username GitHub</label>
+            <label className="text-sm font-medium text-zinc-700">GitHub Username</label>
             <input
               type="text"
               value={github}
               onChange={(e) => setGithub(e.target.value)}
-              placeholder="cth: syafiqeil"
+              placeholder="e.g. syafiqeil"
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
@@ -213,13 +213,13 @@ export default function ProfileSettingsPage() {
             <div className="mt-1 flex items-center gap-3 w-full rounded-lg border border-zinc-300 px-3 py-2">
               <FileTextIcon />
               <span className="flex-1 text-sm text-zinc-700 truncate">
-                {readmeFileName ? readmeFileName : <span className="text-zinc-400">Belum ada file README.md</span>}
+                {readmeFileName ? readmeFileName : <span className="text-zinc-400">No README.md file yet</span>}
               </span>
               {readmeFileName && (
                 <button 
                   onClick={handleRemoveReadme} 
                   className="text-zinc-500 hover:text-red-600 flex-shrink-0"
-                  title="Hapus file"
+                  title="Delete file"
                 >
                   <TrashIcon />
                 </button>
@@ -248,10 +248,10 @@ export default function ProfileSettingsPage() {
       {/* Bagian 2: Animasi Bawaan */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Animasi Bawaan
+          Built-in Animations
         </h2>
         <p className="text-sm text-zinc-500 mb-4">
-          Pilih salah satu animasi bawaan untuk ditampilkan di banner Anda.
+          Choose one of the built-in animations to display on your banner.
         </p>
         <div className="flex flex-col gap-2">
           {/* Opsi Animasi Dino */}
@@ -293,24 +293,24 @@ export default function ProfileSettingsPage() {
       {/* Bagian 3: Impor Ekstensi */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Impor Ekstensi (dari GitHub)
+          Import Extensions (from GitHub)
         </h2>
         <p className="text-sm text-zinc-500 mb-4">
-          Tempel URL repositori GitHub. (Contoh: syafiqeil/animasi-hujan)
+          Paste a GitHub repository URL. (Example: syafiqeil/rain-animation)
         </p>
         <div className="flex gap-2">
           <input
             type="text"
             value={repoUrl}
             onChange={(e) => setRepoUrl(e.target.value)}
-            placeholder="username/nama-repo"
+            placeholder="username/repo-name"
             className="flex-grow rounded-lg border border-zinc-300 px-3 py-2 text-sm"
           />
           <button
             onClick={handleImport}
             className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
           >
-            Impor
+            Import
           </button>
         </div>
       </section>
@@ -318,11 +318,11 @@ export default function ProfileSettingsPage() {
       {/* Bagian 4: Gunakan Ekstensi */}
       <section>
         <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Ekstensi Terpasang
+          Installed Extensions
         </h2>
         {extensions.length === 0 ? (
           <p className="text-sm text-zinc-500">
-            Belum ada ekstensi yang diimpor.
+            No extensions have been imported yet.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -344,11 +344,11 @@ export default function ProfileSettingsPage() {
                 <button 
                   onClick={(e) => {
                     e.preventDefault(); 
-                    alert('Logika hapus ekstensi akan ditambahkan di sini');
+                    alert('Extension removal logic will be added here');
                     // Nanti: panggil fungsi removeExtension(ext.id)
                   }}
                   className="text-zinc-500 hover:text-red-600"
-                  title="Hapus ekstensi"
+                  title="Delete extension"
                 >
                   <TrashIcon />
                 </button>

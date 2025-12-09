@@ -59,7 +59,7 @@ export const ProjectModal = ({ project, onClose }: ProjectModalProps) => {
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-10 text-zinc-500 hover:text-zinc-900 bg-white/50 rounded-full p-1"
-          aria-label="Tutup"
+          aria-label="Close"
         >
           <XIcon />
         </button>
@@ -85,7 +85,7 @@ export const ProjectModal = ({ project, onClose }: ProjectModalProps) => {
             )
           ) : (
             <div className="w-full h-full flex items-center justify-center text-zinc-400">
-              (Tidak ada media)
+              (No media)
             </div>
           )}
         </div>
@@ -102,13 +102,13 @@ export const ProjectModal = ({ project, onClose }: ProjectModalProps) => {
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-800"
             >
-              Kunjungi Tautan <ExternalLinkIcon />
+              Visit Link <ExternalLinkIcon />
             </a>
           )}
           
           {/* Tampilkan deskripsi lengkap */}
           <p className="text-base text-zinc-600 mt-4 whitespace-pre-wrap">
-            {project.description || "Tidak ada deskripsi."}
+            {project.description || "No description."}
           </p>
 
           {/* Tampilkan tags */}

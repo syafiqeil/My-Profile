@@ -32,7 +32,7 @@ const PublishStatus = () => {
   if (isPublishing) {
     return (
       <span className="text-sm text-yellow-600">
-        Memublikasikan...
+        Publishing...
       </span>
     );
   }
@@ -40,7 +40,7 @@ const PublishStatus = () => {
   if (hasUnpublishedChanges) {
     return (
       <span className="text-sm text-blue-600">
-        Perubahan lokal belum dipublikasikan.
+        Local changes are not published yet.
       </span>
     );
   }
@@ -48,12 +48,12 @@ const PublishStatus = () => {
   if (isHydrated) {
     return (
       <span className="text-sm text-green-600">
-        ✔ Sinkron
+        ✔ Synced
       </span>
     );
   }
   
-  return <span className="text-sm text-zinc-500">Memuat...</span>;
+  return <span className="text-sm text-zinc-500">Loading...</span>;
 };
 
 export default function SettingsLayout({
@@ -65,7 +65,7 @@ export default function SettingsLayout({
   const { isPublishing, publishChangesToOnChain, hasUnpublishedChanges } = useAnimationStore();
   
   const handlePublish = async () => {
-    if (window.confirm("Apakah Anda yakin ingin memublikasikan semua perubahan ke on-chain? Ini akan memerlukan transaksi (gas fee).")) {
+    if (window.confirm("Are you sure you want to publish all changes on-chain? This will require a transaction (gas fee).")) {
       await publishChangesToOnChain();
     }
   };
@@ -78,7 +78,7 @@ export default function SettingsLayout({
           href="/"
           className="text-sm text-zinc-600 hover:text-zinc-900"
         >
-          &larr; Kembali ke Dasbor
+          &larr; Back to Dashboard
         </Link>
       </div>
 
@@ -86,7 +86,7 @@ export default function SettingsLayout({
         
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <h1 className="text-2xl font-semibold text-zinc-900">
-            Pengaturan Dasbor
+            Dashboard Settings
           </h1>
           
           <div className="flex items-center gap-4">
@@ -96,7 +96,7 @@ export default function SettingsLayout({
               disabled={isPublishing || !hasUnpublishedChanges} // <-- Nonaktif jika SINKRON
               className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50 disabled:bg-green-400"
             >
-              {isPublishing ? "Memublikasikan..." : "Publikasikan ke On-Chain"}
+            {isPublishing ? "Publishing..." : "Publish to On-Chain"}
             </button>
           </div>
         </div>
@@ -105,9 +105,9 @@ export default function SettingsLayout({
           
           <aside className="md:col-span-1">
             <nav className="flex flex-col gap-1">
-              <NavLink href="/settings/profile">Profil Publik</NavLink>
-              <NavLink href="/settings/projects">Proyek</NavLink>
-              <NavLink href="/settings/activity">Aktivitas</NavLink>
+              <NavLink href="/settings/profile">Public Profile</NavLink>
+              <NavLink href="/settings/projects">Projects</NavLink>
+              <NavLink href="/settings/activity">Activity</NavLink>
             </nav>
           </aside>
 

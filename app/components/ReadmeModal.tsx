@@ -29,7 +29,7 @@ export const ReadmeModal = ({ readmeUrl, onClose }: ReadmeModalProps) => {
       setIsLoading(true);
       const url = resolveIpfsUrl(readmeUrl);
       if (!url) {
-        setContent("Gagal memuat README: URL tidak valid.");
+        setContent("Failed to load README: URL is not valid.");
         setIsLoading(false);
         return;
       }
@@ -37,13 +37,13 @@ export const ReadmeModal = ({ readmeUrl, onClose }: ReadmeModalProps) => {
       try {
         const response = await fetch(url);
         if (!response.ok) {
-          throw new Error(`Gagal mengambil data: ${response.statusText}`);
+          throw new Error(`Failed to fetch data: ${response.statusText}`);
         }
         const text = await response.text();
         setContent(text);
       } catch (error) {
-        console.error("Gagal mengambil konten README:", error);
-        setContent("Gagal memuat konten README.");
+        console.error("Failed to fetch README content:", error);
+        setContent("Failed to load README content.");
       } finally {
         setIsLoading(false);
       }
@@ -70,7 +70,7 @@ export const ReadmeModal = ({ readmeUrl, onClose }: ReadmeModalProps) => {
           <button
             onClick={onClose}
             className="text-zinc-500 hover:text-zinc-900 rounded-full p-1"
-            aria-label="Tutup"
+            aria-label="Close"
           >
             <XIcon />
           </button>
@@ -79,7 +79,7 @@ export const ReadmeModal = ({ readmeUrl, onClose }: ReadmeModalProps) => {
         {/* Konten Markdown (Scrollable) */}
         <div className="flex-1 p-6 overflow-y-auto markdown-content">
           {isLoading ? (
-            <p className="text-zinc-500">Memuat konten...</p>
+            <p className="text-zinc-500">Loading content...</p>
           ) : (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {content}

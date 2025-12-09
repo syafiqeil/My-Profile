@@ -15,7 +15,7 @@ export default function Home() {
   if (isLoading) {
     return (
       <main className="flex min-h-screen w-full flex-col bg-black p-4 pt-8 md:p-8 items-center justify-center">
-        <div className="text-white">Memuat sesi Anda...</div>
+        <div className="text-white">Loading your session...</div>
       </main>
     );
   }
@@ -24,13 +24,13 @@ export default function Home() {
   if (isAuthenticated && !profile) {
     return (
       <main className="flex min-h-screen w-full flex-col bg-black p-4 pt-8 md:p-8 items-center justify-center text-center">
-        <div className="text-white text-2xl font-bold mb-4">Selamat Datang!</div>
-        <p className="text-zinc-400 mb-6">Profil Anda belum diatur. Silakan ke halaman pengaturan.</p>
+        <div className="text-white text-2xl font-bold mb-4">Welcome!</div>
+        <p className="text-zinc-400 mb-6">Your profile is not set up yet. Please go to the settings page.</p>
         <Link 
           href="/settings/profile"
           className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
         >
-          Buka Pengaturan
+          Open Settings
         </Link>
       </main>
     )

@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const session = await getIronSession(await cookies(), sessionOptions);
 
   if (!session.address) {
-    return Response.json({ error: 'Tidak terotentikasi' }, { status: 401 });
+    return Response.json({ error: 'Unauthenticated' }, { status: 401 });
   }
 
   try {
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error("Error GET /api/user/profile:", error);
-    return Response.json({ error: 'Gagal mengambil data' }, { status: 500 });
+    return Response.json({ error: 'Failed to fetch data' }, { status: 500 });
   }
 }
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const session = await getIronSession(await cookies(), sessionOptions);
 
   if (!session.address) {
-    return Response.json({ error: 'Tidak terotentikasi' }, { status: 401 });
+    return Response.json({ error: 'Unauthenticated' }, { status: 401 });
   }
 
   try {
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const newProfileData = (await request.json()) as Partial<Profile>;
 
     if (!newProfileData) {
-      return Response.json({ error: 'Data tidak valid' }, { status: 400 });
+      return Response.json({ error: 'Invalid data' }, { status: 400 });
     }
 
     // Ambil profil yang ada saat ini (jika ada)
@@ -69,6 +69,6 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("Error POST /api/user/profile:", error);
-    return Response.json({ error: 'Gagal menyimpan data' }, { status: 500 });
+    return Response.json({ error: 'Failed to save data' }, { status: 500 });
   }
 }

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     };
     
     if (!message || !signature) {
-      throw new Error('Message dan signature dibutuhkan.');
+      throw new Error('Message and signature are required.');
     }
 
     const siweMessage = new SiweMessage(message);
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     });
 
     if (!result.success) {
-      throw new Error('Gagal memverifikasi tanda tangan.');
+      throw new Error('Failed to verify signature.');
     }
 
     // Tanda tangan valid, buat sesi
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       animation: (userPrefs as any)?.animation || 'dino' // Default ke 'dino'
     });
   } catch (error) {
-    console.error("Error di /api/siwe/verify:", error); 
+    console.error("Error in /api/siwe/verify:", error); 
     return Response.json({ ok: false, message: (error as Error).message }, { status: 500 });
   }
 }
