@@ -152,7 +152,7 @@ export default function ProfileSettingsPage() {
       
         <div className="flex items-center gap-4 mb-6">
           <img
-            src={displayImage}
+            src={displayImage ?? undefined}
             alt="Profile Photo Preview"
             width={80}
             height={80}

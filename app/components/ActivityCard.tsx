@@ -38,11 +38,20 @@ const ActivityCard = () => {
   const contactEmail = activity?.contactEmail;
 
   if (!isHydrated || !profile) {
-    return (
-      <div className="rounded-xl bg-white p-6 shadow-sm md:col-span-2 flex items-center justify-center h-48">
-        <p className="text-zinc-400">Loading activity...</p>
+    const fallback = (
+      <div className="rounded-xl bg-white p-6 shadow-sm md:col-span-2 flex flex-col">
+        <div className="flex justify-start gap-3 flex-shrink-0">
+          <ActivityIcon />
+          <h2 className="text-xl font-semibold text-zinc-900">Activity</h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-zinc-500">
+            Please connect and log in to view or update your profile.
+          </p>
+        </div>
       </div>
     );
+    return fallback;
   }
 
   return (
