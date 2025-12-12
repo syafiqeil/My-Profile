@@ -2,33 +2,26 @@
 
 import { useState, useEffect } from 'react';
 
-const IPFS_GATEWAY = 'https://ipfs.io';
+const IPFS_GATEWAY = 'https://gateway.pinata.cloud';
 
-/**
- * Mengubah URL IPFS (ipfs://...) atau URL preview (blob:...)
- * menjadi URL HTTP yang dapat di-render oleh browser.
- * LANGSUNG menggunakan gateway IPFS publik.
- */
 export const resolveIpfsUrl = (url: string | null | undefined): string | null => {
   if (!url) return null;
 
   if (url.startsWith('ipfs://')) {
     const cid = url.replace('ipfs://', '');
-    // Langsung arahkan ke gateway publik
+    // Arahkan ke gateway Pinata
     return `${IPFS_GATEWAY}/ipfs/${cid}`;
   }
   
   // Tetap dukung blob URL untuk preview
-  if (url.startsWith('blob:') || url.startsWith('http')) {
+  if (url.startsWith('blob:') || url.startsWith('http') || url.startsWith('data:')) {
     return url;
   }
-  
-  // Hapus referensi lama ke /api/proxy-media
   
   return null;
 };
 
-// --- HOOK BARU UNTUK AUTO-SAVE ---
+// --- HOOK UNTUK AUTO-SAVE ---
 /**
  * Hook kustom untuk menunda (debounce) sebuah nilai.
  * Sangat berguna untuk auto-save.

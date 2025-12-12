@@ -80,9 +80,9 @@ export interface BlogPost {
   id: string;
   title: string;
   description: string;
-  coverImage?: string | null; // URL IPFS atau Data URL
-  pendingCoverFile?: File | null; // Untuk upload
-  content?: string; // Full text nanti
+  coverImage?: string | null; 
+  pendingCoverFile?: File | null; 
+  content?: string; 
 }
 
 export interface Certificate {
@@ -144,7 +144,7 @@ interface SessionContextType {
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
-const IPFS_GATEWAY = 'https://ipfs.io';
+const IPFS_GATEWAY = 'https://gateway.pinata.cloud';
 
 const DEFAULTS = {
   animation: 'dino',
@@ -164,7 +164,6 @@ const DEFAULTS = {
   } as Profile
 };
 
-// --- KOMPONEN HELPER: PROFILE LOADER ---
 const ProfileLoader = ({ children }: { children: ReactNode }) => {
   const { 
     _setProfile, 
@@ -175,115 +174,79 @@ const ProfileLoader = ({ children }: { children: ReactNode }) => {
   
   const { address } = useAccount();
 
-  const { data: masterCID, isLoading: isReadingContract, isError, error: readContractError } = useReadContract({
+  // Ambil data on-chain (lambat update)
+  const { data: masterCID, isLoading: isReadingContract } = useReadContract({
     address: USER_PROFILE_CONTRACT_ADDRESS,
     abi: userProfileAbi,
     functionName: 'getProfileCID',
     args: [address as `0x${string}`],
     query: {
-      enabled: !!address && isAuthenticated && !isPublishing,
+      enabled: !!address && isAuthenticated,
     },
   });
 
   useEffect(() => {
-    // Fungsi async di dalam useEffect
     const loadProfileData = async () => {
       _setIsProfileLoading(true);
-      let onChainProfile: Profile | null = null;
       let loadedDraft: Profile | null = null;
+      let serverProfile: Profile | null = null;
 
-      // --- STEP 1: Selalu coba ambil data ON-CHAIN (untuk perbandingan) ---
-      if (masterCID) {
+      // 1. COBA AMBIL DARI SERVER KV (Data paling fresh/instan)
+      try {
+        const res = await fetch('/api/user/profile');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.profile) {
+            serverProfile = data.profile;
+            console.log("Loaded profile from KV (Fast Cache)");
+          }
+        }
+      } catch (e) {
+        console.error("KV Fetch error:", e);
+      }
+
+      // 2. JIKA SERVER KOSONG, BARU COBA BLOCKCHAIN (IPFS)
+      if (!serverProfile && masterCID) {
         try {
-          console.log("Loading on-chain data (Direct IPFS)...");
-          
-          // --- PERUBAHAN DI SINI ---
-          // URL diubah dari proxy lokal ke gateway publik
           const ipfsUrl = `${IPFS_GATEWAY}/ipfs/${masterCID}`;
-          const res = await fetch(ipfsUrl); 
-          // --- AKHIR PERUBAHAN ---
-
+          const res = await fetch(ipfsUrl);
           if (res.ok) {
-            onChainProfile = await res.json();
-          } else {
-             // Ubah pesan error agar lebih jelas
-            throw new Error(`Direct IPFS fetch failed: status ${res.status}`);
+            serverProfile = await res.json();
+            console.log("Loaded profile from IPFS (Blockchain)");
           }
         } catch (e) {
-          console.warn("Failed to fetch data from IPFS:", e);
+          console.warn("IPFS Fetch error:", e);
         }
       }
+
+      // Jika masih kosong, pakai default
+      const finalProfile = serverProfile || DEFAULTS.defaultProfile;
       
-      // Jika IPFS gagal, coba ambil dari Cache Server (Vercel KV)
-      if (!onChainProfile) {
-        try {
-          console.log("IPFS failed, trying cache server (/api/user/profile)...");
-          const res = await fetch('/api/user/profile');
-          if (res.ok) {
-            const data = await res.json();
-            if (data.profile) {
-              onChainProfile = data.profile;
-            }
-          }
-        } catch (e) {
-          console.error("Failed to fetch data from cache server:", e);
-        }
-      }
+      // Simpan "Source of Truth" ke window untuk perbandingan "Unpublished Changes"
+      (window as any).__onChainProfile = finalProfile;
 
-      // Jika semua gagal, data on-chain dianggap default
-      if (!onChainProfile) {
-        console.log("No on-chain data found, using default.");
-        onChainProfile = DEFAULTS.defaultProfile;
-      }
-      // SELALU simpan data on-chain untuk perbandingan
-      (window as any).__onChainProfile = onChainProfile;
-
-      // --- STEP 2: Tentukan apa yang harus ditampilkan di DRAF ---
+      // 3. CEK DRAFT LOKAL (User sedang mengetik/edit)
       const localDraftJson = localStorage.getItem(`draftProfile_${address}`);
       if (localDraftJson) {
-        console.log("Loading local draft from localStorage...");
+        console.log("Loaded local draft...");
         loadedDraft = JSON.parse(localDraftJson);
       } else {
-        // Jika tidak ada draf lokal, gunakan data on-chain sebagai draf awal
-        console.log("No local draft, using on-chain data as draft.");
-        loadedDraft = onChainProfile;
+        // Jika tidak ada draft, gunakan data yang baru kita load
+        loadedDraft = finalProfile;
       }
 
-      // --- STEP 3: Atur State ---
-      _setProfile(loadedDraft); // Set draf
+      _setProfile(loadedDraft);
       _setIsProfileLoading(false);
     };
 
-    // --- Logika Eksekusi ---
-    if (isAuthenticated && !isReadingContract && !isPublishing) {
-      if (isError) {
-        // Error saat baca contract, tidak bisa lanjut
-        console.error("Failed to read smart contract:", readContractError);
-        (window as any).__onChainProfile = DEFAULTS.defaultProfile; // Set default
-        _setProfile(DEFAULTS.defaultProfile); // Set default
-        _setIsProfileLoading(false);
-      } else {
-        // Panggil fungsi async
-        loadProfileData();
-      }
+    if (isAuthenticated && !isPublishing) {
+      loadProfileData();
     } else if (!isAuthenticated) {
-      // Jika tidak login, bersihkan semuanya
       _setProfile(null);
       _setIsProfileLoading(false);
-      (window as any).__onChainProfile = undefined;
     }
   
-  }, [
-    isAuthenticated, 
-    masterCID, 
-    isReadingContract, 
-    isError, 
-    address, 
-    _setProfile, 
-    _setIsProfileLoading, 
-    readContractError,
-    isPublishing // Tambahkan isPublishing agar loader berjalan lagi setelah publikasi
-  ]);
+  }, [isAuthenticated, masterCID, address, _setProfile, _setIsProfileLoading, isPublishing]);
 
   return <>{children}</>;
 };

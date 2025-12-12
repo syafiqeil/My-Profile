@@ -42,6 +42,7 @@ export default function ProfileSettingsPage() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Refs
+  const isDirty = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const readmeInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,7 +50,6 @@ export default function ProfileSettingsPage() {
 
   // --- 1. Muat data dari Global ke Lokal saat komponen dimuat ---
   useEffect(() => {
-    // Hanya muat JIKA isHydrated true, profile ada, DAN kita belum memuat
     if (isHydrated && profile && !hasLoaded) { 
       setName(profile.name || '');
       setBio(profile.bio || '');
@@ -59,30 +59,47 @@ export default function ProfileSettingsPage() {
       // @ts-ignore
       setReadmeFileName(profile.readmeName || null);
       
-      // Tandai bahwa pemuatan lokal selesai
       setHasLoaded(true);
     }
   }, [isHydrated, profile, hasLoaded]);
+
+  // --- Reset form setelah Publish sukses ---
+  useEffect(() => {
+    if (isHydrated && profile) {
+      const currentGlobalImg = resolveIpfsUrl(profile.imageUrl);
+      
+      // Jika sistem mendeteksi URL baru (bukan data:...), reset form lokal agar sinkron
+      if (profile.imageUrl && !profile.imageUrl.startsWith('data:')) {
+         setProfileImagePreview(currentGlobalImg || "/profilgue.png");
+         setProfileImageFile(null); 
+         setName(profile.name || '');
+         setBio(profile.bio || '');
+         setGithub(profile.github || '');
+         
+         // PENTING: Reset dirty state karena ini adalah sinkronisasi sistem, bukan input user
+         isDirty.current = false;
+      }
+    }
+  }, [profile, isHydrated]);
 
   // --- 2. Buat Draf Debounced ---
   const debouncedDraft = useDebounce({
     name,
     bio,
     github,
-    // Cek profileImageFile dulu, baru cek profile.imageUrl
     imageUrl: profileImageFile ? profileImagePreview : (profile?.imageUrl || null),
     readmeUrl: readmeFile ? URL.createObjectURL(readmeFile) : (profile?.readmeUrl || null),
     readmeName: readmeFileName,
-  }, 1000); //
+  }, 1000); 
 
   // --- 3. Auto-Save ke Global State ---
   useEffect(() => {
-    // JANGAN SIMPAN jika form belum terisi (hasLoaded false)
-    if (!hasLoaded) {
+    // --- Pengecekan Kritis ---
+    // Jangan simpan jika belum loaded ATAU user belum menyentuh form (isDirty false)
+    if (!hasLoaded || !isDirty.current) {
       return; 
     }
     
-    // Sekarang aman untuk auto-save
     saveDraft(debouncedDraft);
     
   }, [debouncedDraft, saveDraft, hasLoaded]);
@@ -90,55 +107,59 @@ export default function ProfileSettingsPage() {
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
+      isDirty.current = true; // [MARK DIRTY]
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Simpan sebagai Base64 (data:url) 
         setProfileImagePreview(reader.result as string);
-        setProfileImageFile(file); // Kita masih simpan file untuk upload
+        setProfileImageFile(file);
       };
-      reader.readAsDataURL(file); // Baca sebagai Data URL
+      reader.readAsDataURL(file);
     }
   };
+
   const handleReadmeChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && (file.name.endsWith('.md') || file.type === 'text/markdown')) {
+      isDirty.current = true; // [MARK DIRTY]
       const reader = new FileReader();
       reader.onloadend = () => {
         setReadmeFile(file); 
         setReadmeFileName(file.name);
-        // Perbarui draf dengan URL data
         saveDraft({ 
           readmeUrl: reader.result as string, 
           readmeName: file.name 
         });
       };
-      reader.readAsDataURL(file); // Baca sebagai Data URL
+      reader.readAsDataURL(file); 
     }
   };
+
   const handleRemoveReadme = () => {
+    isDirty.current = true; // [MARK DIRTY]
     setReadmeFile(null);
     setReadmeFileName(null);
-    // Kosongkan URL di draf
     saveDraft({ readmeUrl: null, readmeName: null });
     if(readmeInputRef.current) readmeInputRef.current.value = ""; 
   };
+
   const handleImport = () => {
     if (repoUrl.trim()) {
+      // Import extension tidak mengubah field profil, jadi mungkin tidak perlu isDirty
+      // Tapi jika activeAnimation berubah, itu ditangani terpisah
       addExtension(repoUrl.trim());
       setRepoUrl(''); 
     }
   };
+
   const handleDisconnect = () => { 
     logout();
     router.push('/');
   };
 
-  // Tampilkan loading jika data global belum siap ATAU form lokal belum terisi
   if (!isHydrated || !hasLoaded) {
     return <div className="text-zinc-500">Loading profile settings...</div>;
   }
 
-  // Gunakan 'displayImage' yang sudah ada
   const displayImage = profileImageFile ? profileImagePreview : resolveIpfsUrl(profile?.imageUrl) || "/profilgue.png";
 
   return (
@@ -146,10 +167,7 @@ export default function ProfileSettingsPage() {
       
       {/* Bagian 1: Edit Profil */}
       <section>
-        <h2 className="text-lg font-medium text-zinc-800 mb-4">
-          Public Profile
-        </h2>
-      
+        <h2 className="text-lg font-medium text-zinc-800 mb-4">Public Profile</h2>
         <div className="flex items-center gap-4 mb-6">
           <img
             src={displayImage ?? undefined}
@@ -182,7 +200,7 @@ export default function ProfileSettingsPage() {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); isDirty.current = true; }}
               placeholder="Your full name"
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
@@ -191,7 +209,7 @@ export default function ProfileSettingsPage() {
             <label className="text-sm font-medium text-zinc-700">Bio</label>
             <textarea
               value={bio}
-              onChange={(e) => setBio(e.target.value)}
+              onChange={(e) => { setBio(e.target.value); isDirty.current = true; }}
               placeholder="Tell us about yourself..."
               rows={4}
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
@@ -202,7 +220,7 @@ export default function ProfileSettingsPage() {
             <input
               type="text"
               value={github}
-              onChange={(e) => setGithub(e.target.value)}
+              onChange={(e) => { setGithub(e.target.value); isDirty.current = true; }}
               placeholder="e.g. syafiqeil"
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
             />
@@ -211,7 +229,6 @@ export default function ProfileSettingsPage() {
           <div>
             <label className="text-sm font-medium text-zinc-700">README.md</label>
             <div className="mt-1 flex items-center gap-3 w-full rounded-lg border border-zinc-300 px-3 py-2">
-              <FileTextIcon />
               <span className="flex-1 text-sm text-zinc-700 truncate">
                 {readmeFileName ? readmeFileName : <span className="text-zinc-400">No README.md file yet</span>}
               </span>
@@ -242,19 +259,13 @@ export default function ProfileSettingsPage() {
         </div>
       </section>
 
-      {/* Garis pemisah */}
       <hr className="my-4 border-zinc-200" />
 
       {/* Bagian 2: Animasi Bawaan */}
       <section>
-        <h2 className="text-lg font-medium text-zinc-800 mb-3">
-          Built-in Animations
-        </h2>
-        <p className="text-sm text-zinc-500 mb-4">
-          Choose one of the built-in animations to display on your banner.
-        </p>
+        <h2 className="text-lg font-medium text-zinc-800 mb-3">Built-in Animations</h2>
+        <p className="text-sm text-zinc-500 mb-4">Choose one of the built-in animations to display on your banner.</p>
         <div className="flex flex-col gap-2">
-          {/* Opsi Animasi Dino */}
           <label className="flex items-center gap-3 p-3 border rounded-lg has-[:checked]:bg-zinc-50 has-[:checked]:border-zinc-300 cursor-pointer">
             <input
               type="radio"
@@ -265,7 +276,6 @@ export default function ProfileSettingsPage() {
             />
             Dino (Error 404)
           </label>
-          {/* Opsi Animasi Walker */}
           <label className="flex items-center gap-3 p-3 border rounded-lg has-[:checked]:bg-zinc-50 has-[:checked]:border-zinc-300 cursor-pointer">
             <input
               type="radio"
@@ -276,7 +286,6 @@ export default function ProfileSettingsPage() {
             />
             Walker & Bird
           </label>
-          {/* Opsi Animasi Orbs */}
           <label className="flex items-center gap-3 p-3 border rounded-lg has-[:checked]:bg-zinc-50 has-[:checked]:border-zinc-300 cursor-pointer">
             <input
               type="radio"
@@ -345,7 +354,6 @@ export default function ProfileSettingsPage() {
                   onClick={(e) => {
                     e.preventDefault(); 
                     alert('Extension removal logic will be added here');
-                    // Nanti: panggil fungsi removeExtension(ext.id)
                   }}
                   className="text-zinc-500 hover:text-red-600"
                   title="Delete extension"

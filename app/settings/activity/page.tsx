@@ -51,7 +51,20 @@ export default function ActivitySettingsPage() {
 
   // --- Handlers Blog ---
   const addBlogPost = () => {
-    setBlogPosts([...blogPosts, { id: `blog_${Date.now()}`, title: '', description: '', coverImage: null }]);
+    const today = new Date().toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric'
+    });
+
+    setBlogPosts([
+      ...blogPosts, 
+      { 
+        id: `blog_${Date.now()}`, 
+        title: '', 
+        description: '', 
+        coverImage: null,
+        date: today 
+      }
+    ]);
   };
   const updateBlogPost = (id: string, field: keyof BlogPost, value: any) => {
     setBlogPosts(posts => posts.map(p => p.id === id ? { ...p, [field]: value } : p));
@@ -190,12 +203,13 @@ export default function ActivitySettingsPage() {
             <PlusIcon /> Add Certificate
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {certificates.map(cert => (
-            <div key={cert.id} className="p-3 border rounded-lg bg-white flex items-center gap-3">
+            <div key={cert.id} className="p-3 border rounded-lg bg-white flex flex-col gap-3">
               <div 
                 onClick={() => triggerUpload(cert.id, 'cert')}
-                className="w-12 h-12 bg-zinc-50 rounded-md cursor-pointer overflow-hidden border border-zinc-200 flex-shrink-0 flex items-center justify-center hover:bg-zinc-100"
+                className="relative w-full aspect-[4/3] bg-zinc-50 rounded-md cursor-pointer overflow-hidden border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 group"
               >
                  {(() => {
                    const imgSrc = resolveIpfsUrl(cert.imageUrl);
@@ -208,17 +222,29 @@ export default function ActivitySettingsPage() {
                        />
                      );
                    }
-                   return <ImageIcon />;
+                   return (
+                     <div className="flex flex-col items-center gap-2 text-zinc-400">
+                        <ImageIcon />
+                        <span className="text-xs">Click to Upload Certificate</span>
+                     </div>
+                   );
                  })()}
+                 
+                 {/* Overlay Hover hint */}
+                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
               </div>
-              <input 
-                type="text" 
-                placeholder="Certificate Name" 
-                value={cert.title} 
-                onChange={(e) => updateCertificate(cert.id, 'title', e.target.value)}
-                className="flex-1 text-sm bg-transparent focus:outline-none"
-              />
-              <button onClick={() => removeCertificate(cert.id)} className="text-zinc-400 hover:text-red-500"><TrashIcon /></button>
+
+              {/* Input Judul */}
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Certificate Title" 
+                  value={cert.title} 
+                  onChange={(e) => updateCertificate(cert.id, 'title', e.target.value)}
+                  className="flex-1 text-sm border-b border-zinc-200 pb-1 focus:border-zinc-400 focus:outline-none"
+                />
+                <button onClick={() => removeCertificate(cert.id)} className="text-zinc-400 hover:text-red-500"><TrashIcon /></button>
+              </div>
             </div>
           ))}
         </div>
