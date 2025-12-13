@@ -42,7 +42,7 @@ export default function BlogDetailPage() {
   return (
     <main className="min-h-screen bg-white">
       {/* Header Sticky */}
-      <nav className="border-b border-zinc-100 sticky top-0 bg-white/80 backdrop-blur-md z-10">
+      <nav className="sticky top-0 bg-white/80 backdrop-blur-md z-10">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center">
           <Link href="/" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition-colors text-sm font-medium">
             <ArrowLeftIcon /> Back to Dashboard

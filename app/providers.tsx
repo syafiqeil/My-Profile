@@ -11,7 +11,7 @@ import { useState, useEffect, ReactNode } from 'react';
 
 export const Web3Provider = ({ children }: { children: ReactNode }) => {
   
-  // 1. Inisialisasi state secara "malas" (lazy initialization)
+  // 1. lazy initialization
   // Fungsi di dalam useState() dijamin hanya berjalan di klien.
   const [client] = useState(() => new QueryClient());
   const [config] = useState(() => getDefaultConfig({
