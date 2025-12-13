@@ -79,10 +79,10 @@ const ActivityCard = () => {
                     <Link 
                       key={post.id} 
                       href={`/blog/${post.id}`}
-                      className="group flex gap-4 p-3 rounded-xl border border-zinc-100 hover:border-zinc-200 hover:bg-zinc-50 transition-all"
+                      className="group flex gap-4 p-3 border rounded-sm hover:bg-zinc-50 transition-all"
                     >
                       {/* Gambar di Kiri */}
-                      <div className="w-28 h-24 sm:w-32 sm:h-24 flex-shrink-0 bg-zinc-100 rounded-lg overflow-hidden border border-zinc-200">
+                      <div className="w-28 h-24 sm:w-32 sm:h-24 flex-shrink-0 bg-zinc-100 overflow-hidden border border-zinc-200 rounded-sm">
                         {(() => {
                           const imgSrc = resolveIpfsUrl(post.coverImage);
                           return imgSrc ? (
@@ -130,7 +130,7 @@ const ActivityCard = () => {
                     <button 
                       key={cert.id} 
                       onClick={() => setSelectedCert(cert)}
-                      className="group relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-zinc-200 hover:shadow-md transition-all cursor-pointer"
+                      className="group relative aspect-[4/3] w-full overflow-hidden border rounded-sm hover:shadow-md transition-all cursor-pointer"
                     >
                       {(() => {
                         const imgSrc = resolveIpfsUrl(cert.imageUrl);
@@ -156,13 +156,13 @@ const ActivityCard = () => {
               <h3 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Connect</h3>
               <div className="flex flex-col gap-2">
                 {contactEmail && (
-                  <a href={`mailto:${contactEmail}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 transition-colors group">
+                  <a href={`mailto:${contactEmail}`} className="flex items-center gap-3 p-2 border rounded-sm hover:bg-zinc-50 transition-colors group">
                     <div className="text-zinc-400 group-hover:text-zinc-900"><MailIcon /></div>
                     <span className="text-sm text-zinc-600 truncate">{contactEmail}</span>
                   </a>
                 )}
                 {socialLinks.map(link => (
-                  <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 transition-colors group">
+                  <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 border rounded-sm hover:bg-zinc-50 transition-colors group">
                     <div className="text-zinc-400 group-hover:text-zinc-900"><SocialIcon platform={link.platform} /></div>
                     <span className="text-sm text-zinc-600 capitalize">{link.platform}</span>
                   </a>

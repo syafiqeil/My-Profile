@@ -266,7 +266,7 @@ const ProfileCard = ({ profile }: { profile: Profile | null }) => {
         }
       `}</style>
 
-      <div className="relative flex flex-col overflow-hidden rounded-xl bg-white shadow-sm md:row-span-1">
+      <div className="relative flex flex-col overflow-hidden rounded-xl bg-white shadow-sm md:row-span-1 md:col-span-1">
         <div className="relative h-32 w-full overflow-hidden bg-zinc-900">
           <div className="absolute inset-0">{renderAnimation()}</div>
           <div className="absolute top-2 right-2 z-10">
